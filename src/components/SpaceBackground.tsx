@@ -23,7 +23,7 @@ type Meteor = {
 
 const random = (min: number, max: number) => min + Math.random() * (max - min);
 
-export function SpaceBackground({ active }: { active: boolean }) {
+export function SpaceBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -143,7 +143,7 @@ export function SpaceBackground({ active }: { active: boolean }) {
     }
 
     function tick(now: number) {
-      if (document.hidden || !active) return;
+      if (document.hidden) return;
       frame = window.requestAnimationFrame(tick);
       if (now - lastFrame < 32) return;
       lastFrame = now;
@@ -154,7 +154,7 @@ export function SpaceBackground({ active }: { active: boolean }) {
     function syncMotion() {
       window.cancelAnimationFrame(frame);
       frame = 0;
-      if (document.hidden || !active) {
+      if (document.hidden) {
         meteor = null;
         draw(0);
       } else {
@@ -172,7 +172,7 @@ export function SpaceBackground({ active }: { active: boolean }) {
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', syncMotion);
     };
-  }, [active]);
+  }, []);
 
   return <canvas ref={canvasRef} className="space-background" aria-hidden="true" />;
 }
