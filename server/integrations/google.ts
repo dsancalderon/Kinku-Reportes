@@ -14,8 +14,27 @@ let cachedCredentials: ServiceAccountCredentials | null = null;
 
 function loadCredentials(): ServiceAccountCredentials | null {
   if (cachedCredentials) return cachedCredentials;
+
+  // 1. Soporte para JSON directo en variable de entorno (Vercel / Cloud)
+  const jsonEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.GOOGLE_CREDENTIALS_JSON;
+  if (jsonEnv) {
+    try {
+      cachedCredentials = JSON.parse(jsonEnv);
+      return cachedCredentials;
+    } catch { /* ignore */ }
+  }
+
   const rawPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './secrets/google-credentials.json';
-  const resolved = path.resolve(rawPath);
+  if (rawPath.trim().startsWith('{')) {
+    try {
+      cachedCredentials = JSON.parse(rawPath);
+      return cachedCredentials;
+    } catch { /* ignore */ }
+  }
+
+  // 2. Archivo en disco (desarrollo local)
+  const cleanPath = rawPath.replace(/^["']|["']$/g, '');
+  const resolved = path.resolve(cleanPath);
   if (!fs.existsSync(resolved)) return null;
 
   try {
