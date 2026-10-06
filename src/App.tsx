@@ -107,39 +107,28 @@ export function App() {
 
       <div className="main-shell">
         <header className="topbar">
-          <span>
+          <span className="topbar-breadcrumb">
             Kinku <span className="separator">/</span> {showConsolidated ? 'Consolidado' : project.name}{' '}
             <span className="separator">/</span> Reporte de rendimiento
           </span>
+          <div className="mode-controls">
+            <label htmlFor="data-mode">PERÍODO DEL REPORTE</label>
+            <select
+              id="data-mode"
+              value={mode}
+              onChange={event => setMode(event.target.value as typeof mode)}
+            >
+              <option value="historical">Informe histórico · septiembre 2026</option>
+              <option value="live">Octubre 2026 · acumulado al día</option>
+            </select>
+            <span>
+              America/Bogota ·{' '}
+              {mode === 'historical' ? '01 — 30 SEP, 2026' : getLivePeriodLabel()}
+            </span>
+          </div>
         </header>
 
         <main id="dashboard">
-          <div className="page-heading">
-            <div>
-              <p className="eyebrow">TIC TAC AGENCY × KINKU</p>
-              <h1>
-                Todo el panorama.
-                <br />
-                <span>Una mejor decisión.</span>
-              </h1>
-            </div>
-            <div className="mode-controls">
-              <label htmlFor="data-mode">PERÍODO DEL REPORTE</label>
-              <select
-                id="data-mode"
-                value={mode}
-                onChange={event => setMode(event.target.value as typeof mode)}
-              >
-                <option value="historical">Informe histórico · septiembre 2026</option>
-                <option value="live">Octubre 2026 · acumulado al día</option>
-              </select>
-              <span>
-                America/Bogota ·{' '}
-                {mode === 'historical' ? '01 — 30 SEP, 2026' : getLivePeriodLabel()}
-              </span>
-            </div>
-          </div>
-
           {!showConsolidated && <SyncStatus
             key={`${projectId}-${mode}`}
             projectId={projectId}
