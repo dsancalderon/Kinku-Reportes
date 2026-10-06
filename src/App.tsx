@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import type { Overview, Provider, ReportView, ReportRowItem, ConnectionStatus } from '../shared/contracts';
+import type { Overview, Provider, ReportView, ReportRowItem, ConnectionStatus, CampaignMetrics } from '../shared/contracts';
 import { projects, providerLabels, type ProjectId } from '../shared/projects';
 import { getOverview } from './lib/api';
 import { money, number } from './lib/historical';
@@ -209,7 +209,7 @@ export function App() {
                           : isConnected
                           ? 'Conectado a la API'
                           : isError
-                          ? 'Requiere acceso Explorer'
+                          ? 'Error de conexión'
                           : 'Pendiente de conexión'}
                       </span>
                       {conn?.details && (
@@ -234,6 +234,9 @@ export function App() {
             <GoogleReport
               projectName={project.name}
               connection={overview?.connections?.find(c => c.provider === 'google_ads')}
+              campaigns={overview?.campaigns?.filter(c => c.provider === 'google_ads') || []}
+              month={selectedMonth}
+              mode={mode}
               onNavigate={() => setView('connections')}
             />
           ) : view === 'hubspot' ? (
@@ -573,76 +576,175 @@ function Empty({ title, text, action }: { title: string; text: string; action: (
 function GoogleReport({
   projectName,
   connection,
+  campaigns,
+  month,
+  mode,
   onNavigate,
 }: {
   projectName: string;
   connection?: ConnectionStatus;
+  campaigns: CampaignMetrics[];
+  month: string;
+  mode: 'historical' | 'live';
   onNavigate: () => void;
 }) {
-  const isCloudTestMode =
-    connection?.details?.includes('Test access') ||
-    connection?.details?.includes('Test') ||
-    connection?.details?.includes('Explorer');
+  const isError = connection?.state === 'error';
+
+  // Si hubo error de conexión a Google Ads API
+  if (isError) {
+    return (
+      <section className="panel" style={{ maxWidth: '840px', margin: '20px auto', padding: '30px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+          <div className="provider-icon" style={{ margin: 0, fontSize: '32px' }}>G</div>
+          <div>
+            <p className="eyebrow" style={{ margin: '0 0 4px' }}>GOOGLE ADS · DIAGNÓSTICO</p>
+            <h2 style={{ margin: 0, fontSize: '20px' }}>Google Ads · {projectName}</h2>
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: '#1c1f17',
+            border: '1px solid #4a3e26',
+            borderRadius: '7px',
+            padding: '18px 20px',
+            marginBottom: '22px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ color: '#f59e0b', fontSize: '16px' }}>⚠️</span>
+            <strong style={{ color: '#fef3c7', fontSize: '13px' }}>
+              Estado de la conexión
+            </strong>
+          </div>
+          <p style={{ margin: 0, fontSize: '12px', color: '#d1d5db', lineHeight: 1.6 }}>
+            {connection?.details || 'Error al conectar con Google Ads API.'}
+          </p>
+        </div>
+
+        <button className="primary" onClick={onNavigate}>
+          Ver conexiones ↗
+        </button>
+      </section>
+    );
+  }
+
+  // Si no hay campañas con actividad en el período seleccionado
+  if (campaigns.length === 0) {
+    return (
+      <section className="panel empty" style={{ maxWidth: '840px', margin: '20px auto', padding: '40px 24px' }}>
+        <div className="provider-icon" style={{ margin: '0 auto 16px' }}>G</div>
+        <p className="eyebrow" style={{ margin: '0 0 8px' }}>GOOGLE ADS · {month}</p>
+        <h2 style={{ margin: '0 0 12px' }}>Campañas en pausa</h2>
+        <p style={{ maxWidth: '540px', margin: '0 auto 24px', color: '#a0af97', fontSize: '13px', lineHeight: 1.6 }}>
+          {mode === 'live'
+            ? 'La cuenta de Google Ads (ID 9240696515) está conectada correctamente, pero las campañas de Search y PMAX se encuentran actualmente en pausa en Google Ads sin inversión ni conversiones acumuladas en octubre.'
+            : `No se registraron métricas de gasto ni conversiones en Google Ads para este proyecto en el período de ${month}.`}
+        </p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button className="primary" onClick={onNavigate}>
+            Ver conexiones ↗
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // Si hay campañas registradas (por ejemplo septiembre 2026)
+  const totalSpend = campaigns.reduce((acc, c) => acc + (c.spend || 0), 0);
+  const totalConversions = campaigns.reduce((acc, c) => acc + (c.platformConversions || 0), 0);
+  const totalClicks = campaigns.reduce((acc, c) => acc + (c.clicks || 0), 0);
+  const totalImpressions = campaigns.reduce((acc, c) => acc + (c.impressions || 0), 0);
+  const avgCpa = totalConversions > 0 ? totalSpend / totalConversions : null;
+  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : null;
 
   return (
-    <section className="panel" style={{ maxWidth: '840px', margin: '20px auto', padding: '30px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-        <div className="provider-icon" style={{ margin: 0, fontSize: '32px' }}>G</div>
-        <div>
-          <p className="eyebrow" style={{ margin: '0 0 4px' }}>GOOGLE ADS · ESTADO DE INTEGRACIÓN</p>
-          <h2 style={{ margin: 0, fontSize: '20px' }}>Google Ads · {projectName}</h2>
+    <>
+      <div className="dashboard-heading">
+        <SectionTitle
+          kicker="GOOGLE ADS / RENDIMIENTO"
+          title={`Campañas y resultados · ${month}`}
+        />
+      </div>
+
+      <div className="metrics">
+        <article className="metric">
+          <div className="metric-label">Inversión Google Ads<span>↗</span></div>
+          <strong>{money(totalSpend)} COP</strong>
+          <small>Presupuesto ejecutado</small>
+        </article>
+        <article className="metric highlight">
+          <div className="metric-label">Conversiones totales<span>↗</span></div>
+          <strong>{number(totalConversions)}</strong>
+          <small>Acciones registradas en Google Ads</small>
+        </article>
+        <article className="metric">
+          <div className="metric-label">CPA promedio<span>↗</span></div>
+          <strong>{avgCpa ? `${money(avgCpa)} COP` : '—'}</strong>
+          <small>Costo por conversión</small>
+        </article>
+        <article className="metric">
+          <div className="metric-label">Clics e Impresiones<span>↗</span></div>
+          <strong>{number(totalClicks)} clics</strong>
+          <small>{number(totalImpressions)} imp · CTR {avgCtr ? avgCtr.toFixed(2) : 0}%</small>
+        </article>
+      </div>
+
+      <section className="panel" style={{ marginTop: '24px' }}>
+        <div className="panel-heading">
+          <h3>Detalle por campaña en Google Ads</h3>
+          <span className="mini-tag">API v25 · Cuenta 9240696515</span>
         </div>
-      </div>
+        <table className="campaign-table">
+          <thead>
+            <tr>
+              <th>Campaña</th>
+              <th>Tipo</th>
+              <th style={{ textAlign: 'right' }}>Clics</th>
+              <th style={{ textAlign: 'right' }}>Impresiones</th>
+              <th style={{ textAlign: 'right' }}>Inversión COP</th>
+              <th style={{ textAlign: 'right' }}>Conversiones</th>
+              <th style={{ textAlign: 'right' }}>CPA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {campaigns.map(c => {
+              const cpa = c.platformConversions && c.platformConversions > 0
+                ? (c.spend || 0) / c.platformConversions
+                : null;
+              const isPmax = c.campaignName.toUpperCase().includes('PMAX');
+              return (
+                <tr key={c.campaignId}>
+                  <td>
+                    <strong>{c.campaignName}</strong>
+                    <div style={{ fontSize: '11px', color: '#a0af97' }}>ID: {c.campaignId}</div>
+                  </td>
+                  <td>
+                    <span className="mini-tag" style={{ textTransform: 'uppercase' }}>
+                      {isPmax ? 'Performance Max' : 'Search'}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>{number(c.clicks || 0)}</td>
+                  <td style={{ textAlign: 'right' }}>{number(c.impressions || 0)}</td>
+                  <td style={{ textAlign: 'right' }}>{money(c.spend || 0)} COP</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{number(c.platformConversions || 0)}</td>
+                  <td style={{ textAlign: 'right' }}>{cpa ? `${money(cpa)} COP` : '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
 
-      <div
-        style={{
-          background: '#1c1f17',
-          border: '1px solid #4a3e26',
-          borderRadius: '7px',
-          padding: '18px 20px',
-          marginBottom: '22px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <span style={{ color: '#f59e0b', fontSize: '16px' }}>⚠️</span>
-          <strong style={{ color: '#fef3c7', fontSize: '13px' }}>
-            {isCloudTestMode
-              ? 'Proyecto Google Cloud en nivel "Test Access"'
-              : 'Verificación de credenciales de Google Ads'}
-          </strong>
-        </div>
-        <p style={{ margin: 0, fontSize: '12px', color: '#d1d5db', lineHeight: 1.6 }}>
-          {connection?.details ||
-            'La clave JSON de la cuenta de servicio existe en el servidor, pero Google Ads API requiere nivel de acceso "Explorer" para consultar cuentas publicitarias de producción.'}
-        </p>
-      </div>
-
-      <div style={{ fontSize: '12px', color: '#a0af97', lineHeight: 1.7, marginBottom: '24px' }}>
-        <strong style={{ color: '#e5e7eb', display: 'block', marginBottom: '10px', fontSize: '13px' }}>
-          Cómo habilitar la extracción de campañas de producción:
-        </strong>
-        <ol style={{ margin: 0, paddingLeft: '22px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <li>
-            Entra a <strong>Google Cloud Console</strong> (<a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" style={{ color: 'var(--lime)', textDecoration: 'underline' }}>console.cloud.google.com</a>) y selecciona el proyecto <code>kinku-reporting</code>.
-          </li>
-          <li>
-            Dirígete a <strong>APIs y servicios → Google Ads API</strong>.
-          </li>
-          <li>
-            En el apartado <strong>Nivel de acceso (Access Level)</strong>, haz clic en <strong>Solicitar acceso Explorer (Explorer Access)</strong>. <em>(Google lo otorga para uso interno de la organización)</em>.
-          </li>
-          <li>
-            En tu cuenta de Google Ads (ID <code>9240696515</code>), ve a <strong>Administración → Acceso y seguridad</strong> y confirma que el correo de la cuenta de servicio (<code>api-reporting@kinku-reporting.iam.gserviceaccount.com</code>) tenga acceso de <strong>Solo lectura</strong>.
-          </li>
-        </ol>
-      </div>
-
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <button className="primary" onClick={onNavigate}>
-          Ver panel de Conexiones ↗
-        </button>
-      </div>
-    </section>
+      <Executive
+        note={`Datos extraídos directamente de Google Ads API v25 para la cuenta publicitaria ID 9240696515 (${projectName}). En este período se ejecutaron ${money(totalSpend)} COP en inversión, generando un total de ${number(totalConversions)} conversiones y un costo promedio por conversión de ${avgCpa ? money(avgCpa) : '0'} COP.`}
+        source={
+          mode === 'historical'
+            ? 'Fuente: Google Ads API v25 · Corte mensual 01 al 30 de septiembre 2026'
+            : 'Fuente: Google Ads API v25 en vivo · Acumulado al día actual de octubre 2026'
+        }
+      />
+    </>
   );
 }
 

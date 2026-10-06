@@ -75,9 +75,9 @@ export async function getOverviewData(
     const { data: dbCampaigns } = await supabase
       .from('campaigns')
       .select(`
-        id, external_id, name, status, objective,
+        id, external_id, name, status, objective, provider,
         campaign_metrics (
-          month, date, spend, impressions, clicks, leads, raw_data
+          month, date, spend, impressions, clicks, leads, raw_data, provider
         )
       `)
       .eq('project_id', projectId);
@@ -93,7 +93,7 @@ export async function getOverviewData(
 
       return [{
         projectId,
-        provider: 'meta',
+        provider: (camp.provider || metric.provider || 'meta') as 'meta' | 'google_ads',
         accountId: '',
         campaignId: camp.external_id,
         campaignName: camp.name,
@@ -106,7 +106,7 @@ export async function getOverviewData(
         impressions: metric.impressions ?? null,
         clicks: metric.clicks ?? null,
         platformConversions: metric.leads ?? null,
-        conversionDefinition: 'Leads',
+        conversionDefinition: camp.provider === 'google_ads' ? 'Conversiones' : 'Leads',
         fetchedAt: schedule?.last_successful_at || new Date().toISOString(),
       }];
     });
@@ -267,7 +267,7 @@ export async function getOverviewData(
           ...conn,
           state: googleStatus.state === 'connected' ? 'connected' : googleStatus.state === 'error' ? 'error' : 'not_connected',
           details: googleStatus.errorMessage,
-          lastSuccessfulSyncAt: null,
+          lastSuccessfulSyncAt: schedule?.last_successful_at || null,
         };
       }
       return conn;
