@@ -24,6 +24,7 @@ export function App() {
   const [showConsolidated, setShowConsolidated] = useState(true);
   const [consolidatedOverviews, setConsolidatedOverviews] = useState<Overview[]>([]);
   const [refreshRevision, setRefreshRevision] = useState(0);
+  const [backgroundMotion, setBackgroundMotion] = useState(true);
 
   const project = projects.find(item => item.id === projectId)!;
   const selectedMonth = mode === 'historical' ? '2026-09' : '2026-10';
@@ -101,13 +102,21 @@ export function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <button
+            className="motion-toggle"
+            type="button"
+            aria-pressed={backgroundMotion}
+            onClick={() => setBackgroundMotion(value => !value)}
+          >
+            <span aria-hidden="true">✦</span> {backgroundMotion ? 'Pausar estrellas' : 'Animar estrellas'}
+          </button>
           <p>El sonido al éxito.</p>
           <span className="sidebar-caption">TIC TAC / AGENCY PERFORMANCE</span>
         </div>
       </aside>
 
       <div className="main-shell">
-        <SpaceBackground />
+        <SpaceBackground active={backgroundMotion} />
         <header className="topbar">
           <span className="topbar-breadcrumb">
             Kinku <span className="separator">/</span> {showConsolidated ? 'Consolidado' : project.name}{' '}

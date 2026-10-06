@@ -23,7 +23,7 @@ type Meteor = {
 
 const random = (min: number, max: number) => min + Math.random() * (max - min);
 
-export function SpaceBackground() {
+export function SpaceBackground({ active }: { active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -31,13 +31,12 @@ export function SpaceBackground() {
     const context = canvas?.getContext('2d', { alpha: true });
     if (!canvas || !context) return;
 
-    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let width = 0;
     let height = 0;
     let pixelRatio = 1;
     let stars: Star[] = [];
     let meteor: Meteor | null = null;
-    let nextMeteorAt = performance.now() + 2400;
+    let nextMeteorAt = performance.now() + 1200;
     let frame = 0;
     let lastFrame = 0;
 
@@ -50,43 +49,43 @@ export function SpaceBackground() {
       canvas.width = Math.max(1, Math.round(width * pixelRatio));
       canvas.height = Math.max(1, Math.round(height * pixelRatio));
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      stars = Array.from({ length: Math.min(85, Math.max(24, Math.round(width * height / 19000))) }, () => ({
+      stars = Array.from({ length: Math.min(140, Math.max(55, Math.round(width * height / 9000))) }, () => ({
         x: random(0, width),
         y: random(0, height),
-        radius: random(0.35, 1.15),
-        base: random(0.06, 0.15),
-        pulse: random(0.06, 0.22),
+        radius: random(0.65, 1.5),
+        base: random(0.1, 0.24),
+        pulse: random(0.25, 0.52),
         phase: random(0, Math.PI * 2),
-        speed: random(0.45, 1.55),
-        bright: Math.random() < 0.13,
+        speed: random(1.3, 3.2),
+        bright: Math.random() < 0.22,
       }));
       draw(0);
     }
 
     function spawnMeteor(now: number) {
       meteor = {
-        x: random(-width * 0.08, width * 0.62),
-        y: random(height * 0.08, height * 0.42),
-        distance: random(170, Math.min(width * 0.75, 430)),
-        slope: random(0.22, 0.38),
-        duration: random(1100, 1750),
+        x: random(width * 0.35, width * 0.7),
+        y: random(110, Math.min(height * 0.3, 200)),
+        distance: random(150, Math.min(width * 0.32, 310)),
+        slope: random(-0.18, 0.12),
+        duration: random(1400, 2000),
         born: now,
-        tail: random(65, 120),
+        tail: random(95, 145),
       };
-      nextMeteorAt = now + random(10500, 18500);
+      nextMeteorAt = now + random(7000, 11000);
     }
 
     function draw(now: number) {
       if (!context || width <= 0 || height <= 0) return;
       context.clearRect(0, 0, width, height);
 
-      // Luz difusa casi imperceptible, con movimiento lento sobre la textura original.
+      // Luz difusa lenta sobre la textura original.
       for (const [index, color] of ['90,112,157', '111,93,139'].entries()) {
         const centerX = width * (index ? 0.78 : 0.24) + Math.sin(now * 0.00008 + index) * 22;
         const centerY = height * (index ? 0.67 : 0.28) + Math.cos(now * 0.00006 + index) * 18;
         const radius = Math.max(width, height) * 0.42;
         const glow = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-        glow.addColorStop(0, `rgba(${color},0.027)`);
+        glow.addColorStop(0, `rgba(${color},0.035)`);
         glow.addColorStop(1, `rgba(${color},0)`);
         context.fillStyle = glow;
         context.fillRect(0, 0, width, height);
@@ -97,7 +96,7 @@ export function SpaceBackground() {
         const alpha = star.base + star.pulse * shimmer;
         if (star.bright) {
           const halo = context.createRadialGradient(star.x, star.y, 0, star.x, star.y, star.radius * 5);
-          halo.addColorStop(0, `rgba(235,243,255,${alpha * 0.22})`);
+          halo.addColorStop(0, `rgba(235,243,255,${alpha * 0.36})`);
           halo.addColorStop(1, 'rgba(235,243,255,0)');
           context.fillStyle = halo;
           context.beginPath();
@@ -118,7 +117,7 @@ export function SpaceBackground() {
           const x = meteor.x + meteor.distance * progress;
           const y = meteor.y + meteor.distance * meteor.slope * progress;
           const trail = meteor.tail * Math.sin(Math.PI * progress);
-          const alpha = 0.64 * Math.sin(Math.PI * progress);
+          const alpha = 0.88 * Math.sin(Math.PI * progress);
           const tailX = x - trail;
           const tailY = y - trail * meteor.slope;
           const streak = context.createLinearGradient(tailX, tailY, x, y);
@@ -126,7 +125,7 @@ export function SpaceBackground() {
           streak.addColorStop(0.75, `rgba(206,226,255,${alpha * 0.32})`);
           streak.addColorStop(1, `rgba(247,251,255,${alpha})`);
           context.strokeStyle = streak;
-          context.lineWidth = 1.2;
+          context.lineWidth = 1.5;
           context.beginPath();
           context.moveTo(tailX, tailY);
           context.lineTo(x, y);
@@ -144,7 +143,7 @@ export function SpaceBackground() {
     }
 
     function tick(now: number) {
-      if (document.hidden || motion.matches) return;
+      if (document.hidden || !active) return;
       frame = window.requestAnimationFrame(tick);
       if (now - lastFrame < 32) return;
       lastFrame = now;
@@ -155,7 +154,7 @@ export function SpaceBackground() {
     function syncMotion() {
       window.cancelAnimationFrame(frame);
       frame = 0;
-      if (document.hidden || motion.matches) {
+      if (document.hidden || !active) {
         meteor = null;
         draw(0);
       } else {
@@ -168,14 +167,12 @@ export function SpaceBackground() {
     syncMotion();
     window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', syncMotion);
-    motion.addEventListener('change', syncMotion);
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', syncMotion);
-      motion.removeEventListener('change', syncMotion);
     };
-  }, []);
+  }, [active]);
 
   return <canvas ref={canvasRef} className="space-background" aria-hidden="true" />;
 }
