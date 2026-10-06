@@ -17,13 +17,17 @@ export async function handler(req: IncomingMessage, res: ServerResponse) {
   const path = url.pathname;
   const projectId = url.searchParams.get('project');
 
-  if ((path === '/api/overview' || path === '/api/sync') && !isProjectId(projectId)) {
+  const isSync = path === '/api/sync' || path === '/sync' || path.endsWith('/sync');
+  const isOverview = path === '/api/overview' || path === '/overview' || path.endsWith('/overview');
+  const isHealth = path === '/api/health' || path === '/health' || path.endsWith('/health');
+
+  if ((isOverview || isSync) && !isProjectId(projectId)) {
     res.writeHead(400);
     res.end(JSON.stringify({ error: 'Selecciona un proyecto válido: pekin, metriku o skala.' }));
     return;
   }
 
-  if (path === '/api/sync' && req.method === 'POST') {
+  if (isSync && req.method === 'POST') {
     const hasMeta = !!(process.env.META_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID);
     const hasSupabase = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY);
 
@@ -47,12 +51,12 @@ export async function handler(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
-  if (req.method !== 'GET' || path === '/api/sync') {
-    res.writeHead(405, { Allow: path === '/api/sync' ? 'POST' : 'GET' });
+  if (req.method !== 'GET' || isSync) {
+    res.writeHead(405, { Allow: isSync ? 'POST' : 'GET' });
     res.end(JSON.stringify({ error: 'Método no permitido' }));
-  } else if (path === '/api/health') {
+  } else if (isHealth) {
     res.end(JSON.stringify({ status: 'ok', mode: 'setup' }));
-  } else if (path === '/api/overview') {
+  } else if (isOverview) {
     try {
       const data = await getOverviewData(projectId as ProjectId);
       res.end(JSON.stringify(data));
