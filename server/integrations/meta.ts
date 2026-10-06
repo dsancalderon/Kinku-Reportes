@@ -1,5 +1,5 @@
 import { getSupabase } from '../db/supabase.js';
-import type { ProjectId } from '../../shared/projects';
+import type { ProjectId } from '../../shared/projects.js';
 
 interface MetaCampaign {
   id: string;
@@ -34,7 +34,49 @@ export function matchesProject(campaignName: string, projectId: ProjectId): bool
   }
 }
 
-export async function syncMetaForProject(projectId: ProjectId): Promise<{ count: number; message: string }> {
+export function classifyCampaignLine(name: string): string {
+  const upper = name.toUpperCase();
+  if (upper.includes('APARTAESTUDIO')) return 'APARTAESTUDIOS';
+  if (upper.includes('2 HABITACION') || upper.includes('VIVIENDA FAMILIAR')) return 'APARTAMENTOS 2 HABITACIONES';
+  if (upper.includes('AWARENESS') || upper.includes('AWARENNES') || upper.includes('RECONOCIMIENTO')) return 'RECONOCIMIENTO';
+  if (upper.includes('INVERSION') || upper.includes('INVERSIÓN')) return 'INVERSIÓN';
+  if (upper.includes('VIVIENDA')) return 'VIVIENDA';
+  if (upper.includes('ARRENDATARIO')) return 'ARRENDATARIOS';
+  if (upper.includes('PROPIETARIO')) return 'PROPIETARIOS';
+  if (upper.includes('INTERACCION') || upper.includes('INTERACCIÓN') || upper.includes('POST PROMOTED')) return 'INTERACCIÓN';
+  return 'GENERAL';
+}
+
+export function getObjectiveForLine(lineName: string): 'awareness' | 'engagement' | 'leads' {
+  const upper = lineName.toUpperCase();
+  if (upper.includes('RECONOCIMIENTO') || upper.includes('AWARENESS')) return 'awareness';
+  if (upper.includes('INTERACCI') || upper.includes('POST PROMOTED')) return 'engagement';
+  return 'leads';
+}
+
+function getMonthDateRanges(monthStr: string): { since: string; until: string } {
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  if (monthStr === '2026-09') {
+    return { since: '2026-09-01', until: '2026-09-30' };
+  }
+
+  if (monthStr >= currentMonthStr) {
+    const todayStr = now.toISOString().slice(0, 10);
+    return { since: `${monthStr}-01`, until: todayStr };
+  }
+
+  // Mes pasado genérico
+  const [year, month] = monthStr.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return { since: `${monthStr}-01`, until: `${monthStr}-${String(lastDay).padStart(2, '0')}` };
+}
+
+export async function syncMetaForProject(
+  projectId: ProjectId,
+  months: string[] = ['2026-09', '2026-10']
+): Promise<{ count: number; message: string }> {
   const token = process.env.META_ACCESS_TOKEN;
   const accountId = getAccountId();
   const supabase = getSupabase();
@@ -70,9 +112,10 @@ export async function syncMetaForProject(projectId: ProjectId): Promise<{ count:
   const campBody = await campRes.json() as { data: MetaCampaign[] };
   const projectCampaigns = (campBody.data || []).filter(c => matchesProject(c.name, projectId));
 
-  let syncedCount = 0;
+  let syncedRecords = 0;
+
   for (const camp of projectCampaigns) {
-    const { data: dbCamp, error: campErr } = await supabase.from('campaigns').upsert({
+    const { data: dbCamp } = await supabase.from('campaigns').upsert({
       project_id: projectId,
       provider: 'meta',
       external_id: camp.id,
@@ -82,38 +125,56 @@ export async function syncMetaForProject(projectId: ProjectId): Promise<{ count:
       updated_at: new Date().toISOString(),
     }, { onConflict: 'project_id,provider,external_id' }).select('id').single();
 
-    if (campErr || !dbCamp) {
-      console.error(`Error guardando campaña ${camp.name}:`, campErr);
-      continue;
-    }
+    if (!dbCamp) continue;
 
-    const insRes = await fetch(`https://graph.facebook.com/v21.0/${camp.id}/insights?fields=spend,impressions,reach,clicks,actions&date_preset=maximum&access_token=${token}`);
-    if (insRes.ok) {
-      const insBody = await insRes.json() as { data: MetaInsight[] };
-      const insight = insBody.data?.[0];
-      if (insight) {
-        const leadsAction = (insight.actions || []).find(a => a.action_type === 'lead');
-        const conversionsAction = (insight.actions || []).find(a => a.action_type === 'offsite_complete_registration_add_meta_leads' || a.action_type === 'lead');
+    // Sincronizar por cada mes solicitado
+    for (const m of months) {
+      const { since, until } = getMonthDateRanges(m);
+      const timeRangeParam = encodeURIComponent(JSON.stringify({ since, until }));
 
-        await supabase.from('campaign_metrics').upsert({
-          campaign_id: dbCamp.id,
-          project_id: projectId,
-          provider: 'meta',
-          date: insight.date_stop || new Date().toISOString().slice(0, 10),
-          spend: Number(insight.spend || 0),
-          impressions: Number(insight.impressions || 0),
-          reach: Number(insight.reach || 0),
-          clicks: Number(insight.clicks || 0),
-          leads: Number(leadsAction?.value || 0),
-          conversions: Number(conversionsAction?.value || 0),
-          raw_data: insight,
-        }, { onConflict: 'campaign_id,date' });
+      const insRes = await fetch(
+        `https://graph.facebook.com/v21.0/${camp.id}/insights?time_range=${timeRangeParam}&fields=spend,impressions,reach,clicks,actions&access_token=${token}`
+      );
+
+      if (insRes.ok) {
+        const insBody = await insRes.json() as { data: MetaInsight[] };
+        const insight = insBody.data?.[0];
+
+        if (insight) {
+          const leadsAction = (insight.actions || []).find(a => a.action_type === 'lead');
+          const conversionsAction = (insight.actions || []).find(a =>
+            a.action_type === 'offsite_complete_registration_add_meta_leads' || a.action_type === 'lead'
+          );
+          const engagementAction = (insight.actions || []).find(a =>
+            a.action_type === 'post_engagement' || a.action_type === 'page_engagement'
+          );
+
+          await supabase.from('campaign_metrics').upsert({
+            campaign_id: dbCamp.id,
+            project_id: projectId,
+            provider: 'meta',
+            month: m,
+            date: insight.date_stop || until,
+            spend: Number(insight.spend || 0),
+            impressions: Number(insight.impressions || 0),
+            reach: Number(insight.reach || 0),
+            clicks: Number(insight.clicks || 0),
+            leads: Number(leadsAction?.value || 0),
+            conversions: Number(conversionsAction?.value || 0),
+            raw_data: {
+              ...insight,
+              engagement: Number(engagementAction?.value || 0),
+              lineName: classifyCampaignLine(camp.name),
+            },
+          }, { onConflict: 'campaign_id,date' });
+
+          syncedRecords++;
+        }
       }
     }
-    syncedCount++;
   }
 
-  // 3. Registrar ejecución y actualizar calendario
+  // 3. Registrar ejecución y calendario
   const now = new Date();
   const nextScheduled = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -129,13 +190,13 @@ export async function syncMetaForProject(projectId: ProjectId): Promise<{ count:
     project_id: projectId,
     provider: 'meta',
     status: 'success',
-    message: `Sincronizadas ${syncedCount} campañas de Meta Ads exitosamente.`,
+    message: `Sincronizadas campañas de ${projectId} para meses ${months.join(', ')}. Registros: ${syncedRecords}.`,
     started_at: now.toISOString(),
     completed_at: new Date().toISOString(),
   });
 
   return {
-    count: syncedCount,
-    message: `Sincronización completada: ${syncedCount} campañas de Meta Ads actualizadas en Supabase.`,
+    count: syncedRecords,
+    message: `Sincronización mensual completada: ${syncedRecords} registros actualizados en Supabase.`,
   };
 }

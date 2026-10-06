@@ -1,0 +1,79 @@
+[
+  {
+    "projectId": "pekin",
+    "month": "2026-09",
+    "channel": "meta",
+    "objective": "awareness",
+    "lineName": "RECONOCIMIENTO",
+    "targetKpi": 125000,
+    "targetUnit": "impresiones",
+    "budgetSpend": 500000,
+    "targetCostPerResult": 4
+  },
+  {
+    "projectId": "pekin",
+    "month": "2026-09",
+    "channel": "meta",
+    "objective": "leads",
+    "lineName": "APARTAESTUDIOS",
+    "targetKpi": 70,
+    "targetUnit": "leads",
+    "budgetSpend": 700000,
+    "targetCostPerResult": 10000
+  },
+  {
+    "projectId": "pekin",
+    "month": "2026-09",
+    "channel": "meta",
+    "objective": "leads",
+    "lineName": "APARTAMENTOS 2 HABITACIONES",
+    "targetKpi": 40,
+    "targetUnit": "leads",
+    "budgetSpend": 400000,
+    "targetCostPerResult": 10000
+  },
+  {
+    "projectId": "pekin",
+    "month": "2026-09",
+    "channel": "google_ads",
+    "objective": "leads",
+    "lineName": "PROYECTO PEKIN",
+    "targetKpi": 35,
+    "targetUnit": "leads",
+    "budgetSpend": 700000,
+    "targetCostPerResult": 20000
+  },
+  {
+    "projectId": "metriku",
+    "month": "2026-09",
+    "channel": "meta",
+    "objective": "engagement",
+    "lineName": "INTERACCIÓN",
+    "targetKpi": 10600,
+    "targetUnit": "interacciones",
+    "budgetSpend": 150000,
+    "targetCostPerResult": 14
+  },
+  {
+    "projectId": "skala",
+    "month": "2026-09",
+    "channel": "meta",
+    "objective": "leads",
+    "lineName": "INVERSIÓN",
+    "targetKpi": 50,
+    "targetUnit": "leads",
+    "budgetSpend": 500000,
+    "targetCostPerResult": 10000
+  },
+  {
+    "projectId": "skala",
+    "month": "2026-09",
+    "channel": "meta",
+    "objective": "leads",
+    "lineName": "VIVIENDA",
+    "targetKpi": 50,
+    "targetUnit": "leads",
+    "budgetSpend": 500000,
+    "targetCostPerResult": 10000
+  }
+]

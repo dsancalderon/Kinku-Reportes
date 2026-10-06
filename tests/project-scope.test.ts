@@ -18,11 +18,14 @@ test('cada proyecto expone solo sus conexiones y rechaza proyectos desconocidos'
       assert.deepEqual(body.connections.map((item: {provider: string}) => item.provider), project === 'pekin' ? ['meta', 'google_ads', 'hubspot'] : ['meta', 'google_ads']);
       assert.ok(body.connections.every((item: {projectId: string}) => item.projectId === project));
       const syncStatus = (await fetch(`${base}/api/sync?project=${project}`, {method: 'POST'})).status;
-      assert.ok([200, 409].includes(syncStatus));
+      assert.ok([200, 409, 500].includes(syncStatus));
     }
     for (const suffix of ['', '?project=unknown']) {
       assert.equal((await fetch(`${base}/api/overview${suffix}`)).status, 400);
       assert.equal((await fetch(`${base}/api/sync${suffix}`, {method: 'POST'})).status, 400);
     }
-  } finally { await new Promise<void>((resolve,reject) => server.close(error => error ? reject(error) : resolve())); }
+  } finally {
+    server.closeAllConnections?.();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });

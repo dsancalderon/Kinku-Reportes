@@ -9,5 +9,13 @@ export const historical: Record<ProjectId, ReportView[]> = {
   metriku: [{id:'engagement',label:'Interacción',unit:'interacciones',stats:[['Interacciones','30.044','Interacciones con la página'],['Inversión','$146.183','COP · Meta Ads'],['Costo por interacción','$4,87','COP · CPI'],['Cumplimiento','283,43%','Meta: 10.600 interacciones']],rows:[{name:'Arrendatario · interacción',result:30044,target:10600,spend:146183,unit:'interacciones'}],note:'La meta de interacción está superada y se consumió el 97,46% del plan mensual. El reporte registra 75 reacciones y 8 guardados como desgloses, no como resultados adicionales. Priorizar calidad y frecuencia.',slides:'17–18'}],
   skala: [{id:'leads',label:'Clientes potenciales',unit:'leads',stats:[['Leads Meta','116','Vivienda + inversión'],['Inversión','$1.192.975','COP · Meta Ads'],['Costo por lead','$10.284','COP · consolidado'],['Cumplimiento','116,00%','116 de 100 leads']],rows:[{name:'Vivienda',result:65,target:50,spend:589949,unit:'leads'},{name:'Inversión',result:51,target:50,spend:603026,unit:'leads'}],note:'Ambas líneas superan su meta de leads. Vivienda tiene el menor costo por resultado; Inversión necesita mejorar eficiencia. El gasto consolidado supera en $192.975 el plan mensual. Validar calidad antes de ampliar inversión.',slides:'20–22, 26'}],
 };
-export const money = (value: number) => new Intl.NumberFormat('es-CO', {style:'currency',currency:'COP',maximumFractionDigits:0}).format(value);
-export const number = (value: number) => new Intl.NumberFormat('es-CO', {maximumFractionDigits:2}).format(value);
+export const money = (value: number | null | undefined) =>
+  value === null || value === undefined || isNaN(value)
+    ? '—'
+    : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+
+export const number = (value: number | null | undefined) =>
+  value === null || value === undefined || isNaN(value)
+    ? '—'
+    : new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(value);
+
