@@ -1,4 +1,4 @@
-import { getSupabase } from '../db/supabase';
+import { getSupabase } from '../db/supabase.js';
 import type { ProjectId } from '../../shared/projects';
 
 interface MetaCampaign {

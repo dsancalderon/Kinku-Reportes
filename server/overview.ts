@@ -1,7 +1,7 @@
 import type { Overview, ConnectionStatus, CampaignMetrics } from '../shared/contracts';
-import { getConnections } from './integrations/index';
+import { getConnections } from './integrations/index.js';
 import type { ProjectId } from '../shared/projects';
-import { getSupabase } from './db/supabase';
+import { getSupabase } from './db/supabase.js';
 
 export async function getOverviewData(projectId: ProjectId): Promise<Overview> {
   const baseConnections = getConnections(projectId);

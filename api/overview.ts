@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getOverviewData } from '../server/overview';
-import { isProjectId, type ProjectId } from '../shared/projects';
+import { getOverviewData } from '../server/overview.js';
+import { isProjectId, type ProjectId } from '../shared/projects.js';
 
 export default async function overviewHandler(req: IncomingMessage, res: ServerResponse) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');

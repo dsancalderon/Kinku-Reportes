@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import healthHandler from '../api/health';
-import overviewHandler from '../api/overview';
-import syncHandler from '../api/sync';
+import healthHandler from '../api/health.js';
+import overviewHandler from '../api/overview.js';
+import syncHandler from '../api/sync.js';
 
 const isTest = process.execArgv?.includes?.('--test') || process.env.NODE_ENV === 'test';
 if (!isTest && typeof process.loadEnvFile === 'function') {

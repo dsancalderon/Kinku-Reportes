@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { isProjectId, type ProjectId } from '../shared/projects';
-import { syncMetaForProject } from '../server/integrations/meta';
+import { isProjectId, type ProjectId } from '../shared/projects.js';
+import { syncMetaForProject } from '../server/integrations/meta.js';
 
 export default async function syncHandler(req: IncomingMessage, res: ServerResponse) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
