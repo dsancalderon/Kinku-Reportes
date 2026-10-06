@@ -23,7 +23,7 @@ test('Meta recorre todas las páginas y asigna la campaña de interacción a Pek
   }
 });
 
-test('el consolidado no compara conversiones de Google con una meta de leads', () => {
+test('el consolidado muestra la meta de 35 leads junto a las conversiones de Google', () => {
   const overview: Overview = {
     projectId: 'pekin', mode: 'live', month: '2026-09', reportingTimezone: 'America/Bogota',
     connections: [], reports: {},
@@ -33,6 +33,7 @@ test('el consolidado no compara conversiones de Google con una meta de leads', (
   };
   const consolidated = buildConsolidated([overview]);
   assert.equal(consolidated.googleConversions, 5);
-  assert.equal(consolidated.rows[0].target, null);
-  assert.equal(consolidated.rows[0].targetNote, 'Por validar');
+  assert.equal(consolidated.rows[0].target, 35);
+  assert.equal(consolidated.rows[0].targetUnit, 'leads');
+  assert.equal(consolidated.rows[0].targetNote, undefined);
 });

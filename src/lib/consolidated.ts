@@ -12,6 +12,7 @@ export interface ConsolidatedRow {
   result: number | null;
   spend: number | null;
   target: number | null;
+  targetUnit?: string;
   targetNote?: string;
 }
 
@@ -56,10 +57,9 @@ export function buildConsolidated(overviews: Overview[]) {
         unit: 'conversiones',
         result: googleConversions,
         spend: google.length ? google.reduce((sum, campaign) => sum + (campaign.spend || 0), 0) : null,
-        target: googleTargets.length === 1 && googleTargets[0].targetUnit.toLowerCase().includes('convers')
-          ? googleTargets[0].targetKpi
-          : null,
-        targetNote: googleTargets.length > 0 ? 'Por validar' : 'Sin definir',
+        target: googleTargets.length === 1 ? googleTargets[0].targetKpi : null,
+        targetUnit: googleTargets.length === 1 ? googleTargets[0].targetUnit : undefined,
+        targetNote: googleTargets.length === 1 ? undefined : googleTargets.length > 0 ? 'Por validar' : 'Sin definir',
       });
     }
     if (rows.length === startRows) rows.push({
