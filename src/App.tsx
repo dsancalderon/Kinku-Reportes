@@ -5,6 +5,7 @@ import { getOverview } from './lib/api';
 import { money, number } from './lib/historical';
 import { SyncStatus } from './components/SyncStatus';
 import { Consolidated } from './components/Consolidated';
+import { SpaceBackground } from './components/SpaceBackground';
 
 type View = 'summary' | Provider | 'connections';
 
@@ -106,6 +107,7 @@ export function App() {
       </aside>
 
       <div className="main-shell">
+        <SpaceBackground />
         <header className="topbar">
           <span className="topbar-breadcrumb">
             Kinku <span className="separator">/</span> {showConsolidated ? 'Consolidado' : project.name}{' '}
