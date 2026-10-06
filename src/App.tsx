@@ -4,27 +4,31 @@ import { projects, providerLabels, type ProjectId } from '../shared/projects';
 import { getOverview } from './lib/api';
 import { money, number } from './lib/historical';
 import { SyncStatus } from './components/SyncStatus';
+import { Consolidated } from './components/Consolidated';
 
 type View = 'summary' | Provider | 'connections';
 
 function getLivePeriodLabel(): string {
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, '0');
-  return `01 — ${day} OCT, ${now.getFullYear()}`;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  return `01 — ${parts.slice(8)} OCT, ${parts.slice(0, 4)}`;
 }
 
 export function App() {
   const [projectId, setProject] = useState<ProjectId>('pekin');
   const [view, setView] = useState<View>('summary');
-  const [mode, setMode] = useState<'historical' | 'live'>('historical');
+  const [mode, setMode] = useState<'historical' | 'live'>('live');
   const [objective, setObjective] = useState<string>('leads');
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState('');
+  const [showConsolidated, setShowConsolidated] = useState(true);
+  const [consolidatedOverviews, setConsolidatedOverviews] = useState<Overview[]>([]);
+  const [refreshRevision, setRefreshRevision] = useState(0);
 
   const project = projects.find(item => item.id === projectId)!;
   const selectedMonth = mode === 'historical' ? '2026-09' : '2026-10';
 
   useEffect(() => {
+    if (showConsolidated) return;
     const controller = new AbortController();
     setOverview(null);
     setError('');
@@ -45,10 +49,22 @@ export function App() {
         }
       });
     return () => controller.abort();
-  }, [projectId, mode]);
+  }, [projectId, mode, showConsolidated, refreshRevision]);
+
+  useEffect(() => {
+    if (!showConsolidated) return;
+    const controller = new AbortController();
+    setConsolidatedOverviews([]);
+    setError('');
+    Promise.all(projects.map(item => getOverview(item.id, selectedMonth, controller.signal)))
+      .then(results => { if (!controller.signal.aborted) setConsolidatedOverviews(results); })
+      .catch(() => { if (!controller.signal.aborted) setError('No se pudo cargar el consolidado de las tres marcas.'); });
+    return () => controller.abort();
+  }, [showConsolidated, mode, refreshRevision]);
 
   function selectProject(id: ProjectId) {
     setProject(id);
+    setShowConsolidated(false);
     setView('summary');
   }
 
@@ -65,12 +81,16 @@ export function App() {
         <div className="workspace-label">
           KINKU <span>REPORTING STUDIO</span>
         </div>
-        <p className="nav-label">PROYECTOS</p>
+        <p className="nav-label">REPORTES</p>
         <nav className="project-nav" aria-label="Proyectos">
+          <button aria-pressed={showConsolidated} onClick={() => setShowConsolidated(true)}>
+            <span className="project-dot" style={{ background: '#a5c92b' }} />
+            Consolidado
+          </button>
           {projects.map((item, i) => (
             <button
               key={item.id}
-              aria-pressed={projectId === item.id}
+              aria-pressed={!showConsolidated && projectId === item.id}
               onClick={() => selectProject(item.id)}
             >
               <span className="project-dot" style={{ background: item.accent }} />
@@ -88,7 +108,7 @@ export function App() {
       <div className="main-shell">
         <header className="topbar">
           <span>
-            Kinku <span className="separator">/</span> {project.name}{' '}
+            Kinku <span className="separator">/</span> {showConsolidated ? 'Consolidado' : project.name}{' '}
             <span className="separator">/</span> Reporte de rendimiento
           </span>
         </header>
@@ -120,11 +140,14 @@ export function App() {
             </div>
           </div>
 
-          <SyncStatus
+          {!showConsolidated && <SyncStatus
             key={`${projectId}-${mode}`}
             projectId={projectId}
             sync={overview?.projectId === projectId ? overview.sync : undefined}
-          />
+            onUpdated={() => setRefreshRevision(value => value + 1)}
+          />}
+
+          {showConsolidated ? <Consolidated overviews={consolidatedOverviews} month={selectedMonth} loading={!error && consolidatedOverviews.length === 0} error={error} /> : <>
 
           <section className="project-header">
             <div className={`project-logo ${projectId}`}>
@@ -166,8 +189,8 @@ export function App() {
               </span>
               <p>
                 {mode === 'historical'
-                  ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) extraído de Meta Ads y contrastado con las metas del Flow.'
-                  : 'Métricas reales extraídas de Meta Ads acumuladas desde el 01 de octubre hasta hoy. Sin números predeterminados ni inventados.'}
+                  ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) con Meta Ads, Google Ads y metas registradas.'
+                  : 'Métricas de Meta Ads y Google Ads acumuladas desde el 01 de octubre hasta hoy. Las metas de octubre siguen sin definir.'}
               </p>
             </div>
           )}
@@ -255,6 +278,7 @@ export function App() {
             />
           ) : (
             <>
+              {view === 'summary' && projectId === 'pekin' && <PekinChannelSummary overview={overview} />}
               <div className="dashboard-heading">
                 <SectionTitle
                   kicker={view === 'meta' ? 'META ADS / OBJETIVOS' : 'RESUMEN / META ADS'}
@@ -284,10 +308,14 @@ export function App() {
 
               <CampaignTable report={report} />
 
+              {mode === 'live' && <MetaCampaignTable campaigns={overview.campaigns.filter(campaign => campaign.provider === 'meta')} />}
+
               <Executive
-                note={report.note}
+                note={view === 'summary' && projectId === 'pekin' ? `${report.note} ${pekinGoogleSummary(overview)}` : report.note}
                 source={
-                  mode === 'historical'
+                  view === 'summary' && projectId === 'pekin'
+                    ? 'Fuentes: Meta Ads Graph API, Google Ads API y metas del mes cuando están definidas'
+                    : mode === 'historical'
                     ? 'Fuente: Meta Ads Graph API + Flow de Metas Septiembre 2026'
                     : 'Fuente: Meta Ads Graph API en vivo · Período acumulado 01 al día actual'
                 }
@@ -313,12 +341,14 @@ export function App() {
             </>
           )}
 
+          </>}
+
           <footer>
             <span>
               TIC TAC <strong>AGENCY PERFORMANCE</strong>
             </span>
             <span>
-              {project.name} ·{' '}
+              {showConsolidated ? 'Consolidado Kinku' : project.name} ·{' '}
               {mode === 'historical'
                 ? 'Histórico septiembre 2026'
                 : 'Octubre 2026 · acumulado al día'}
@@ -328,6 +358,39 @@ export function App() {
       </div>
     </div>
   );
+}
+
+function pekinGoogleSummary(overview: Overview): string {
+  const google = overview.campaigns.filter(campaign => campaign.provider === 'google_ads');
+  if (!google.length) return 'Google Ads: sin métricas verificadas para este mes; no se incluye en los totales.';
+  const spend = google.reduce((sum, campaign) => sum + (campaign.spend || 0), 0);
+  const conversions = google.reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
+  return `Google Ads: ${number(conversions)} conversiones registradas y ${money(spend)} COP de inversión en ${google.length} campañas. Las conversiones de Google se muestran separadas de los leads de Meta.`;
+}
+
+function PekinChannelSummary({ overview }: { overview: Overview }) {
+  const meta = overview.campaigns.filter(campaign => campaign.provider === 'meta');
+  const google = overview.campaigns.filter(campaign => campaign.provider === 'google_ads');
+  const leads = meta.filter(campaign => !['RECONOCIMIENTO', 'INTERACCIÓN'].includes(campaign.lineName || ''))
+    .reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
+  const conversions = google.reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
+  const investment = [...meta, ...google].reduce((sum, campaign) => sum + (campaign.spend || 0), 0);
+  return <section className="pekin-channel-summary" aria-label="Resumen de Meta y Google Ads de Pekín">
+    <div><span>LEADS META</span><strong>{number(leads)}</strong><small>Captación en campañas Meta</small></div>
+    <div><span>CONVERSIONES GOOGLE ADS</span><strong>{google.length ? number(conversions) : '—'}</strong><small>{google.length ? 'Acciones registradas en Google Ads' : 'Sin actividad en el período'}</small></div>
+    <div><span>INVERSIÓN META + GOOGLE</span><strong>{money(investment)}</strong><small>Gasto publicitario total del mes</small></div>
+  </section>;
+}
+
+function MetaCampaignTable({ campaigns }: { campaigns: CampaignMetrics[] }) {
+  return <section className="panel table-panel">
+    <div className="panel-heading"><h3>Campañas activas en Meta · octubre</h3><span className="mini-tag">ESTADO EFECTIVO ACTIVO</span></div>
+    <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Línea</th><th>Resultado</th><th>Inversión</th><th>Impresiones</th></tr></thead>
+      <tbody>{campaigns.length ? [...campaigns].sort((a, b) => (b.spend || 0) - (a.spend || 0)).map(campaign => <tr key={campaign.campaignId}>
+        <td>{campaign.campaignName}</td><td>{campaign.lineName}</td><td>{number(campaign.lineName === 'RECONOCIMIENTO' ? campaign.impressions : campaign.lineName === 'INTERACCIÓN' ? campaign.engagement : campaign.platformConversions)}</td><td>{money(campaign.spend)}</td><td>{number(campaign.impressions)}</td>
+      </tr>) : <tr><td colSpan={5}>Sin campañas activas verificadas en la última sincronización.</td></tr>}</tbody>
+    </table></div>
+  </section>;
 }
 
 function SectionTitle({ title, kicker }: { title: string; kicker: string }) {
@@ -590,6 +653,10 @@ function GoogleReport({
 }) {
   const isError = connection?.state === 'error';
 
+  if (connection?.state === 'not_connected') {
+    return <section className="panel empty"><h2>Google Ads · {projectName}</h2><p>{connection.details || 'No hay una cuenta de Google Ads asignada a este proyecto.'}</p><button className="primary" onClick={onNavigate}>Ver conexiones ↗</button></section>;
+  }
+
   // Si hubo error de conexión a Google Ads API
   if (isError) {
     return (
@@ -635,10 +702,10 @@ function GoogleReport({
       <section className="panel empty" style={{ maxWidth: '840px', margin: '20px auto', padding: '40px 24px' }}>
         <div className="provider-icon" style={{ margin: '0 auto 16px' }}>G</div>
         <p className="eyebrow" style={{ margin: '0 0 8px' }}>GOOGLE ADS · {month}</p>
-        <h2 style={{ margin: '0 0 12px' }}>Campañas en pausa</h2>
+        <h2 style={{ margin: '0 0 12px' }}>Sin actividad registrada</h2>
         <p style={{ maxWidth: '540px', margin: '0 auto 24px', color: '#a0af97', fontSize: '13px', lineHeight: 1.6 }}>
           {mode === 'live'
-            ? 'La cuenta de Google Ads (ID 9240696515) está conectada correctamente, pero las campañas de Search y PMAX se encuentran actualmente en pausa en Google Ads sin inversión ni conversiones acumuladas en octubre.'
+            ? 'La cuenta de Google Ads está conectada, pero no registra inversión ni conversiones en el mes seleccionado.'
             : `No se registraron métricas de gasto ni conversiones en Google Ads para este proyecto en el período de ${month}.`}
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>

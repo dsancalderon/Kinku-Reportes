@@ -70,6 +70,12 @@ export async function getOverviewData(
       budgetSpend: Number(t.budget_spend),
       targetCostPerResult: Number(t.target_cost_per_result),
     }));
+    const lineForCampaign = (camp: { name: string; objective?: string | null }) => {
+      if (/AWAREN(N)?ES|AWARENESS/i.test(camp.name) && targets.some(target => target.channel === 'meta' && target.objective === 'awareness' && target.lineName === 'RECONOCIMIENTO')) {
+        return 'RECONOCIMIENTO';
+      }
+      return classifyCampaignLine(camp.name, camp.objective || undefined);
+    };
 
     // 3. Consultar campañas y métricas extraídas para este mes
     const { data: dbCampaigns } = await supabase
@@ -77,7 +83,7 @@ export async function getOverviewData(
       .select(`
         id, external_id, name, status, objective, provider,
         campaign_metrics (
-          month, date, spend, impressions, clicks, leads, raw_data, provider
+          month, date, spend, impressions, clicks, leads, conversions, raw_data, provider
         )
       `)
       .eq('project_id', projectId);
@@ -87,7 +93,7 @@ export async function getOverviewData(
         ? camp.campaign_metrics.find(m => m.month === selectedMonth)
         : null;
 
-      if (!metric || (Number(metric.spend || 0) === 0 && Number(metric.impressions || 0) === 0 && Number(metric.leads || 0) === 0)) {
+      if (!metric || (camp.provider === 'meta' && selectedMonth === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date()) && camp.status !== 'ACTIVE')) {
         return [];
       }
 
@@ -97,7 +103,9 @@ export async function getOverviewData(
         accountId: '',
         campaignId: camp.external_id,
         campaignName: camp.name,
-        lineName: classifyCampaignLine(camp.name),
+        status: camp.status,
+        isActive: camp.status === 'ACTIVE',
+        lineName: lineForCampaign(camp),
         month: selectedMonth,
         date: metric.date || '',
         accountTimezone: 'America/Bogota',
@@ -105,7 +113,8 @@ export async function getOverviewData(
         spend: metric.spend ?? null,
         impressions: metric.impressions ?? null,
         clicks: metric.clicks ?? null,
-        platformConversions: metric.leads ?? null,
+        platformConversions: camp.provider === 'google_ads' ? (metric.raw_data?.conversions ?? metric.conversions ?? null) : (metric.leads ?? null),
+        engagement: camp.provider === 'meta' ? (metric.raw_data?.engagement ?? null) : null,
         conversionDefinition: camp.provider === 'google_ads' ? 'Conversiones' : 'Leads',
         fetchedAt: schedule?.last_successful_at || new Date().toISOString(),
       }];
@@ -118,16 +127,18 @@ export async function getOverviewData(
     const lineMetrics: Record<string, { spend: number; leads: number; impressions: number; engagement: number; hasData: boolean }> = {};
 
     (dbCampaigns || []).forEach(camp => {
+      if (camp.provider !== 'meta') return;
+      if (selectedMonth === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date()) && camp.status !== 'ACTIVE') return;
       const m = Array.isArray(camp.campaign_metrics)
         ? camp.campaign_metrics.find(item => item.month === selectedMonth)
         : null;
 
-      const line = classifyCampaignLine(camp.name);
+      const line = lineForCampaign(camp);
       if (!lineMetrics[line]) {
         lineMetrics[line] = { spend: 0, leads: 0, impressions: 0, engagement: 0, hasData: false };
       }
 
-      if (m && (m.spend > 0 || m.impressions > 0 || m.leads > 0)) {
+      if (m) {
         lineMetrics[line].spend += Number(m.spend || 0);
         lineMetrics[line].leads += Number(m.leads || 0);
         lineMetrics[line].impressions += Number(m.impressions || 0);
@@ -140,7 +151,10 @@ export async function getOverviewData(
     const projectTargets = targets.filter(t => t.channel === 'meta');
 
     // Identificar objetivos presentes en targets (ej: 'leads', 'awareness', 'engagement')
-    const uniqueObjectives = Array.from(new Set(projectTargets.map(t => t.objective)));
+    const uniqueObjectives = Array.from(new Set([
+      ...projectTargets.map(t => t.objective),
+      ...Object.entries(lineMetrics).filter(([, item]) => item.hasData).map(([line]) => getObjectiveForLine(line)),
+    ]));
     if (uniqueObjectives.length === 0) {
       if (projectId === 'pekin') uniqueObjectives.push('leads', 'awareness');
       else if (projectId === 'metriku') uniqueObjectives.push('engagement');
@@ -168,7 +182,7 @@ export async function getOverviewData(
           if (hasData) hasAnyExtractedData = true;
 
           const resValue = hasData
-            ? (isAwareness ? extracted.impressions : isEngagement ? (extracted.engagement || extracted.impressions) : extracted.leads)
+            ? (isAwareness ? extracted.impressions : isEngagement ? extracted.engagement : extracted.leads)
             : null;
           const spendValue = hasData ? extracted.spend : null;
 
@@ -189,26 +203,24 @@ export async function getOverviewData(
             costPerResult: (spendValue && resValue && resValue > 0) ? spendValue / resValue : null,
           });
         });
-      } else {
-        // Sin metas en BD para este objetivo (ej. líneas detectadas)
-        Object.entries(lineMetrics).forEach(([lineName, ext]) => {
-          if (ext.hasData && getObjectiveForLine(lineName) === obj) {
-            hasAnyExtractedData = true;
-            const resValue = isAwareness ? ext.impressions : isEngagement ? (ext.engagement || ext.impressions) : ext.leads;
-            totalResult += resValue;
-            totalSpend += ext.spend;
-            rows.push({
-              name: lineName,
-              result: resValue,
-              target: null,
-              spend: ext.spend,
-              budget: null,
-              unit,
-              costPerResult: resValue > 0 ? ext.spend / resValue : null,
-            });
-          }
-        });
       }
+      // Una campaña activa también debe aparecer cuando no tiene meta cargada.
+      Object.entries(lineMetrics).forEach(([lineName, ext]) => {
+        if (!ext.hasData || objTargets.some(t => t.lineName === lineName) || getObjectiveForLine(lineName) !== obj) return;
+        hasAnyExtractedData = true;
+        const resValue = isAwareness ? ext.impressions : isEngagement ? ext.engagement : ext.leads;
+        totalResult += resValue;
+        totalSpend += ext.spend;
+        rows.push({
+          name: lineName,
+          result: resValue,
+          target: null,
+          spend: ext.spend,
+          budget: null,
+          unit,
+          costPerResult: resValue > 0 ? ext.spend / resValue : null,
+        });
+      });
 
       const label = obj === 'leads' ? 'Clientes potenciales' : obj === 'awareness' ? 'Reconocimiento' : 'Interacción';
       const fulfillment = (hasAnyExtractedData && totalTarget > 0)
@@ -228,13 +240,15 @@ export async function getOverviewData(
         ],
         [
           `Costo / ${unit === 'impresiones' ? 'mil' : unit.slice(0, -1)}`,
-          (hasAnyExtractedData && totalResult > 0) ? money(totalSpend / totalResult) : '—',
+          (hasAnyExtractedData && totalResult > 0) ? money(totalSpend / totalResult * (isAwareness ? 1000 : 1)) : '—',
           'COP · consolidado',
         ],
         [
           'Cumplimiento',
           fulfillment,
-          hasAnyExtractedData ? `${number(totalResult)} de ${number(totalTarget)} ${unit}` : 'Pendiente de extracción',
+          totalTarget > 0
+            ? (hasAnyExtractedData ? `${number(totalResult)} de ${number(totalTarget)} ${unit}` : 'Pendiente de extracción')
+            : 'Sin meta definida',
         ],
       ];
 
@@ -252,7 +266,7 @@ export async function getOverviewData(
     });
 
     const hasSynced = !!schedule?.last_successful_at;
-    const googleStatus = await checkGoogleAdsStatus();
+    const googleStatus = projectId === 'pekin' ? await checkGoogleAdsStatus() : null;
 
     const connections: ConnectionStatus[] = baseConnections.map(conn => {
       if (conn.provider === 'meta') {
@@ -263,6 +277,7 @@ export async function getOverviewData(
         };
       }
       if (conn.provider === 'google_ads') {
+        if (!googleStatus) return { ...conn, details: 'No hay una cuenta de Google Ads asignada a este proyecto.' };
         return {
           ...conn,
           state: googleStatus.state === 'connected' ? 'connected' : googleStatus.state === 'error' ? 'error' : 'not_connected',

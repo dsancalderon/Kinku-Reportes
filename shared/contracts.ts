@@ -28,6 +28,8 @@ export interface CampaignMetrics {
   accountId: string;
   campaignId: string;
   campaignName: string;
+  status?: string;
+  isActive?: boolean;
   lineName?: string;
   month?: string;
   date: string;
@@ -37,6 +39,7 @@ export interface CampaignMetrics {
   impressions: number | null;
   clicks: number | null;
   platformConversions: number | null;
+  engagement?: number | null;
   conversionDefinition: string;
   fetchedAt: string;
 }

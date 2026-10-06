@@ -13,31 +13,55 @@ interface MetaInsightItem {
   date_stop?: string;
 }
 
+interface MetaCampaignItem { id: string; name: string; objective?: string; status?: string; effective_status?: string }
+const META_API_VERSION = process.env.META_API_VERSION || 'v26.0';
+
+export async function fetchMetaPages<T>(url: string): Promise<T[]> {
+  const items: T[] = [];
+  let next: string | undefined = url;
+  const seen = new Set<string>();
+  while (next) {
+    if (seen.has(next)) throw new Error('Paginación repetida en la respuesta de Meta.');
+    seen.add(next);
+    const response = await fetch(next);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as { error?: { message?: string } };
+      throw new Error(body.error?.message || `Meta API respondió ${response.status}`);
+    }
+    const body = await response.json() as { data?: T[]; paging?: { next?: string } };
+    items.push(...(body.data || []));
+    next = body.paging?.next;
+  }
+  return items;
+}
+
 function getAccountId(): string {
   const raw = process.env.META_AD_ACCOUNT_ID || '';
-  return raw.startsWith('act_') ? raw : `act_${raw}`;
+  return raw ? (raw.startsWith('act_') ? raw : `act_${raw}`) : '';
 }
 
 export function matchesProject(campaignName: string, projectId: ProjectId): boolean {
   const upper = campaignName.toUpperCase();
   switch (projectId) {
-    case 'pekin': return upper.includes('PEKIN');
+    case 'pekin': return upper.includes('PEKIN') || upper.includes('PEKÍN');
     case 'metriku': return upper.includes('METRIKU');
     case 'skala': return upper.includes('SKALA');
     default: return false;
   }
 }
 
-export function classifyCampaignLine(name: string): string {
+export function classifyCampaignLine(name: string, objective?: string): string {
   const upper = name.toUpperCase();
   if (upper.includes('APARTAESTUDIO')) return 'APARTAESTUDIOS';
   if (upper.includes('2 HABITACION') || upper.includes('VIVIENDA FAMILIAR')) return 'APARTAMENTOS 2 HABITACIONES';
+  if (upper.includes('INTERACCION') || upper.includes('INTERACCIÓN') || upper.includes('POST PROMOTED')) return 'INTERACCIÓN';
   if (upper.includes('AWARENESS') || upper.includes('AWARENNES') || upper.includes('RECONOCIMIENTO')) return 'RECONOCIMIENTO';
   if (upper.includes('INVERSION') || upper.includes('INVERSIÓN')) return 'INVERSIÓN';
   if (upper.includes('VIVIENDA')) return 'VIVIENDA';
   if (upper.includes('ARRENDATARIO')) return 'ARRENDATARIOS';
   if (upper.includes('PROPIETARIO')) return 'PROPIETARIOS';
-  if (upper.includes('INTERACCION') || upper.includes('INTERACCIÓN') || upper.includes('POST PROMOTED')) return 'INTERACCIÓN';
+  if (objective === 'OUTCOME_AWARENESS') return 'RECONOCIMIENTO';
+  if (objective === 'OUTCOME_ENGAGEMENT') return 'INTERACCIÓN';
   return 'GENERAL';
 }
 
@@ -49,22 +73,11 @@ export function getObjectiveForLine(lineName: string): 'awareness' | 'engagement
 }
 
 function getMonthDateRanges(monthStr: string): { since: string; until: string } {
-  const now = new Date();
-  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-  if (monthStr === '2026-09') {
-    return { since: '2026-09-01', until: '2026-09-30' };
-  }
-
-  if (monthStr >= currentMonthStr) {
-    const todayStr = now.toISOString().slice(0, 10);
-    return { since: `${monthStr}-01`, until: todayStr };
-  }
-
-  // Mes pasado genérico
   const [year, month] = monthStr.split('-').map(Number);
   const lastDay = new Date(year, month, 0).getDate();
-  return { since: `${monthStr}-01`, until: `${monthStr}-${String(lastDay).padStart(2, '0')}` };
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const end = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
+  return { since: `${monthStr}-01`, until: monthStr === today.slice(0, 7) ? today : end };
 }
 
 export async function syncMetaForProject(
@@ -80,14 +93,14 @@ export async function syncMetaForProject(
   }
 
   // 1. Obtener información de la cuenta publicitaria
-  const accRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}?fields=name,currency,timezone_name&access_token=${token}`);
+  const accRes = await fetch(`https://graph.facebook.com/${META_API_VERSION}/${accountId}?fields=name,currency,timezone_name&access_token=${encodeURIComponent(token)}`);
   if (!accRes.ok) {
     const err = await accRes.json();
     throw new Error(`Error consultando cuenta de Meta: ${err.error?.message || accRes.statusText}`);
   }
   const accountData = await accRes.json() as { name: string; currency: string; timezone_name: string };
 
-  await supabase.from('ad_accounts').upsert({
+  const { error: accountError } = await supabase.from('ad_accounts').upsert({
     project_id: projectId,
     provider: 'meta',
     account_id: accountId,
@@ -96,57 +109,71 @@ export async function syncMetaForProject(
     timezone: accountData.timezone_name || 'America/Bogota',
     updated_at: new Date().toISOString(),
   }, { onConflict: 'project_id,provider,account_id' });
+  if (accountError) throw new Error(`No se pudo guardar la cuenta Meta: ${accountError.message}`);
 
   let totalSynced = 0;
 
-  // 2. Para cada mes, consultar insights a nivel campaña para el rango de fechas exacto
+  // El listado de campañas incluye las encendidas sin gasto todavía; Insights no las devuelve.
+  const campaignUrl = new URL(`https://graph.facebook.com/${META_API_VERSION}/${accountId}/campaigns`);
+  campaignUrl.searchParams.set('fields', 'id,name,objective,status,effective_status');
+  campaignUrl.searchParams.set('limit', '100');
+  campaignUrl.searchParams.set('access_token', token);
+  const accountCampaigns = (await fetchMetaPages<MetaCampaignItem>(campaignUrl.toString()))
+    .filter(item => matchesProject(item.name, projectId));
+
+  // 2. Consultar insights a nivel campaña para cada mes y combinar con el estado real.
   for (const m of months) {
     const { since, until } = getMonthDateRanges(m);
     const timeRangeParam = encodeURIComponent(JSON.stringify({ since, until }));
-    const url = `https://graph.facebook.com/v21.0/${accountId}/insights?time_range=${timeRangeParam}&level=campaign&fields=campaign_id,campaign_name,spend,impressions,reach,clicks,actions&limit=100&access_token=${token}`;
-
-    const insRes = await fetch(url);
-    if (!insRes.ok) {
-      const err = await insRes.json();
-      console.error(`Error en insights de Meta para ${m}:`, err);
-      continue;
-    }
-
-    const insBody = await insRes.json() as { data: MetaInsightItem[] };
-    const monthInsights = (insBody.data || []).filter(item => matchesProject(item.campaign_name, projectId));
+    const insightsUrl = `https://graph.facebook.com/${META_API_VERSION}/${accountId}/insights?time_range=${timeRangeParam}&level=campaign&fields=campaign_id,campaign_name,spend,impressions,reach,clicks,actions&limit=100&access_token=${encodeURIComponent(token)}`;
+    const monthInsights = (await fetchMetaPages<MetaInsightItem>(insightsUrl))
+      .filter(item => matchesProject(item.campaign_name, projectId));
+    const insightsById = new Map(monthInsights.map(item => [item.campaign_id, item]));
+    const isCurrentMonth = m === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date());
+    const visible: MetaCampaignItem[] = isCurrentMonth
+      ? accountCampaigns.filter(campaign => campaign.effective_status === 'ACTIVE')
+      : [
+          ...accountCampaigns.filter(campaign => insightsById.has(campaign.id)),
+          ...monthInsights.filter(item => !accountCampaigns.some(campaign => campaign.id === item.campaign_id))
+            .map(item => ({ id: item.campaign_id, name: item.campaign_name, effective_status: 'UNKNOWN' })),
+        ];
 
     // Limpiar métricas anteriores para este mes y proyecto para evitar datos obsoletos o cruzados
-    await supabase.from('campaign_metrics')
+    const { error: deleteError } = await supabase.from('campaign_metrics')
       .delete()
       .eq('project_id', projectId)
+      .eq('provider', 'meta')
       .eq('month', m);
+    if (deleteError) throw new Error(`No se pudieron limpiar las métricas Meta de ${m}: ${deleteError.message}`);
 
-    for (const item of monthInsights) {
+    for (const campaign of visible) {
+      const item = insightsById.get(campaign.id);
       // Registrar o actualizar campaña en tabla campaigns
-      const { data: dbCamp } = await supabase.from('campaigns').upsert({
+      const { data: dbCamp, error: campaignError } = await supabase.from('campaigns').upsert({
         project_id: projectId,
         provider: 'meta',
-        external_id: item.campaign_id,
-        name: item.campaign_name,
-        status: 'ACTIVE',
+        external_id: campaign.id,
+        name: campaign.name,
+        objective: campaign.objective || null,
+        status: campaign.effective_status || campaign.status || 'UNKNOWN',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'project_id,provider,external_id' }).select('id').single();
 
-      if (!dbCamp) continue;
+      if (campaignError || !dbCamp) throw new Error(`No se pudo guardar la campaña Meta ${campaign.name}: ${campaignError?.message || 'sin ID'}`);
 
-      const leadsAction = (item.actions || []).find(a => a.action_type === 'lead');
-      const engagementAction = (item.actions || []).find(a =>
+      const leadsAction = (item?.actions || []).find(a => a.action_type === 'lead');
+      const engagementAction = (item?.actions || []).find(a =>
         a.action_type === 'post_engagement' || a.action_type === 'page_engagement'
       );
 
-      const spend = Number(item.spend || 0);
-      const impressions = Number(item.impressions || 0);
-      const reach = Number(item.reach || 0);
-      const clicks = Number(item.clicks || 0);
+      const spend = Number(item?.spend || 0);
+      const impressions = Number(item?.impressions || 0);
+      const reach = Number(item?.reach || 0);
+      const clicks = Number(item?.clicks || 0);
       const leads = Number(leadsAction?.value || 0);
       const engagement = Number(engagementAction?.value || 0);
 
-      await supabase.from('campaign_metrics').insert({
+      const { error: metricError } = await supabase.from('campaign_metrics').insert({
         campaign_id: dbCamp.id,
         project_id: projectId,
         provider: 'meta',
@@ -159,11 +186,13 @@ export async function syncMetaForProject(
         leads,
         conversions: leads,
         raw_data: {
-          ...item,
+          ...(item || {}),
           engagement,
-          lineName: classifyCampaignLine(item.campaign_name),
+          effectiveStatus: campaign.effective_status,
+          lineName: classifyCampaignLine(campaign.name, campaign.objective),
         },
       });
+      if (metricError) throw new Error(`No se pudieron guardar métricas Meta de ${campaign.name}: ${metricError.message}`);
 
       totalSynced++;
     }
