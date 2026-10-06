@@ -81,29 +81,33 @@ export async function getOverviewData(
       `)
       .eq('project_id', projectId);
 
-    const campaigns: CampaignMetrics[] = (dbCampaigns || []).map(camp => {
+    const campaigns: CampaignMetrics[] = (dbCampaigns || []).flatMap(camp => {
       const metric = Array.isArray(camp.campaign_metrics)
-        ? camp.campaign_metrics.find(m => m.month === selectedMonth) || camp.campaign_metrics[0]
+        ? camp.campaign_metrics.find(m => m.month === selectedMonth)
         : null;
 
-      return {
+      if (!metric || (Number(metric.spend || 0) === 0 && Number(metric.impressions || 0) === 0 && Number(metric.leads || 0) === 0)) {
+        return [];
+      }
+
+      return [{
         projectId,
         provider: 'meta',
         accountId: '',
         campaignId: camp.external_id,
         campaignName: camp.name,
         lineName: classifyCampaignLine(camp.name),
-        month: metric?.month || selectedMonth,
-        date: metric?.date || '',
+        month: selectedMonth,
+        date: metric.date || '',
         accountTimezone: 'America/Bogota',
         currency: 'COP',
-        spend: metric?.spend ?? null,
-        impressions: metric?.impressions ?? null,
-        clicks: metric?.clicks ?? null,
-        platformConversions: metric?.leads ?? null,
+        spend: metric.spend ?? null,
+        impressions: metric.impressions ?? null,
+        clicks: metric.clicks ?? null,
+        platformConversions: metric.leads ?? null,
         conversionDefinition: 'Leads',
         fetchedAt: schedule?.last_successful_at || new Date().toISOString(),
-      };
+      }];
     });
 
     // 4. Construir Reportes agregados basados en extracciones reales vs metas
