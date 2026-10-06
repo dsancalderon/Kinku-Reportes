@@ -9,11 +9,11 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
   const monthLabel = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${month}-01T12:00:00Z`));
   return <section className="consolidated">
     <div className="consolidated-heading">
-      <div><p className="eyebrow">TIC TAC AGENCY / KINKU</p><h2>Resumen de cumplimiento</h2><p className="subtle">{monthLabel} · America/Bogota · Meta Ads y Google Ads</p></div>
+      <div><p className="eyebrow">TIC TAC AGENCY / KINKU</p><h2>Resumen de <em>cumplimiento</em></h2><p className="subtle">{monthLabel} · America/Bogota · Meta Ads y Google Ads</p></div>
       <div className="consolidated-cards">
-        <article><span>LEADS META</span><strong>{loading ? '…' : number(metaLeads)}</strong></article>
-        <article><span>CONV. GOOGLE</span><strong>{loading ? '…' : number(googleConversions)}</strong></article>
-        <article><span>INVERSIÓN TOTAL</span><strong>{loading ? '…' : money(spend)}</strong></article>
+        <article><span className="kpi-label"><LeadsIcon />LEADS META</span><strong>{loading ? '…' : number(metaLeads)}</strong></article>
+        <article><span className="kpi-label"><GoogleIcon />CONV. GOOGLE</span><strong>{loading ? '…' : number(googleConversions)}</strong></article>
+        <article><span className="kpi-label"><SpendIcon />INVERSIÓN TOTAL</span><strong>{loading ? '…' : money(spend)}</strong></article>
       </div>
     </div>
     {error && <p role="alert" className="consolidated-error">{error}</p>}
@@ -36,4 +36,22 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
         <p className="table-note">Cada fila de Meta corresponde a una línea y muestra sus campañas del mes. {googleComparison ? 'En Google Ads, el cumplimiento compara las conversiones totales de la cuenta con la meta mensual de leads del Flow; las unidades se muestran por separado.' : 'Las conversiones de Google se reportan por cuenta.'}</p>
       </div>}
   </section>;
+}
+
+function LeadsIcon() {
+  return <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 5v18h18" /><path d="M9 18l4-5 3 3 6-8" /><path d="M18 8h4v4" />
+  </svg>;
+}
+
+function GoogleIcon() {
+  return <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+    <path d="M21.5 9.2A9 9 0 1 0 23 14h-8.5" />
+  </svg>;
+}
+
+function SpendIcon() {
+  return <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <circle cx="14" cy="14" r="11" /><path d="M17.5 10.2c-.6-1.2-1.9-1.9-3.5-1.9-2 0-3.4 1.1-3.4 2.7 0 3.6 7 1.9 7 5.5 0 1.6-1.5 2.8-3.6 2.8-1.7 0-3.1-.8-3.7-2.1M14 6.5v15" />
+  </svg>;
 }

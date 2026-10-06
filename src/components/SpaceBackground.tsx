@@ -49,16 +49,19 @@ export function SpaceBackground() {
       canvas.width = Math.max(1, Math.round(width * pixelRatio));
       canvas.height = Math.max(1, Math.round(height * pixelRatio));
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      stars = Array.from({ length: Math.min(140, Math.max(55, Math.round(width * height / 9000))) }, () => ({
-        x: random(0, width),
-        y: random(0, height),
-        radius: random(0.65, 1.5),
-        base: random(0.1, 0.24),
-        pulse: random(0.25, 0.52),
-        phase: random(0, Math.PI * 2),
-        speed: random(1.3, 3.2),
-        bright: Math.random() < 0.22,
-      }));
+      stars = Array.from({ length: Math.min(420, Math.max(120, Math.round(width * height / 4200))) }, () => {
+        const bright = Math.random() < 0.12;
+        return {
+          x: random(0, width),
+          y: random(0, height),
+          radius: bright ? random(1.1, 1.8) : random(0.35, 1.05),
+          base: bright ? random(0.5, 0.7) : random(0.18, 0.42),
+          pulse: bright ? random(0.25, 0.45) : random(0.1, 0.38),
+          phase: random(0, Math.PI * 2),
+          speed: random(0.8, 2.6),
+          bright,
+        };
+      });
       draw(0);
     }
 
@@ -79,31 +82,20 @@ export function SpaceBackground() {
       if (!context || width <= 0 || height <= 0) return;
       context.clearRect(0, 0, width, height);
 
-      // Luz difusa lenta sobre la textura original.
-      for (const [index, color] of ['90,112,157', '111,93,139'].entries()) {
-        const centerX = width * (index ? 0.78 : 0.24) + Math.sin(now * 0.00008 + index) * 22;
-        const centerY = height * (index ? 0.67 : 0.28) + Math.cos(now * 0.00006 + index) * 18;
-        const radius = Math.max(width, height) * 0.42;
-        const glow = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-        glow.addColorStop(0, `rgba(${color},0.035)`);
-        glow.addColorStop(1, `rgba(${color},0)`);
-        context.fillStyle = glow;
-        context.fillRect(0, 0, width, height);
-      }
 
       for (const star of stars) {
         const shimmer = (1 + Math.sin(now * 0.001 * star.speed + star.phase)) / 2;
         const alpha = star.base + star.pulse * shimmer;
         if (star.bright) {
           const halo = context.createRadialGradient(star.x, star.y, 0, star.x, star.y, star.radius * 5);
-          halo.addColorStop(0, `rgba(235,243,255,${alpha * 0.36})`);
-          halo.addColorStop(1, 'rgba(235,243,255,0)');
+          halo.addColorStop(0, `rgba(255,255,255,${alpha * 0.3})`);
+          halo.addColorStop(1, 'rgba(255,255,255,0)');
           context.fillStyle = halo;
           context.beginPath();
           context.arc(star.x, star.y, star.radius * 5, 0, Math.PI * 2);
           context.fill();
         }
-        context.fillStyle = `rgba(224,234,255,${alpha})`;
+        context.fillStyle = `rgba(255,255,255,${Math.min(1, alpha)})`;
         context.beginPath();
         context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
         context.fill();
@@ -121,9 +113,9 @@ export function SpaceBackground() {
           const tailX = x - trail;
           const tailY = y - trail * meteor.slope;
           const streak = context.createLinearGradient(tailX, tailY, x, y);
-          streak.addColorStop(0, 'rgba(210,229,255,0)');
-          streak.addColorStop(0.75, `rgba(206,226,255,${alpha * 0.32})`);
-          streak.addColorStop(1, `rgba(247,251,255,${alpha})`);
+          streak.addColorStop(0, 'rgba(255,255,255,0)');
+          streak.addColorStop(0.75, `rgba(255,255,255,${alpha * 0.32})`);
+          streak.addColorStop(1, `rgba(255,255,255,${alpha})`);
           context.strokeStyle = streak;
           context.lineWidth = 1.5;
           context.beginPath();
@@ -133,7 +125,7 @@ export function SpaceBackground() {
 
           const head = context.createRadialGradient(x, y, 0, x, y, 6);
           head.addColorStop(0, `rgba(255,255,255,${alpha})`);
-          head.addColorStop(1, 'rgba(180,211,255,0)');
+          head.addColorStop(1, 'rgba(255,255,255,0)');
           context.fillStyle = head;
           context.beginPath();
           context.arc(x, y, 6, 0, Math.PI * 2);

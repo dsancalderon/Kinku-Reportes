@@ -75,6 +75,7 @@ export function App() {
 
   return (
     <div className="app" style={{ '--project': project.accent } as CSSProperties}>
+      <SpaceBackground />
       <aside className="sidebar">
         <a href="#dashboard" className="agency">
           <img src="/brand/tictac-logo.png" alt="TicTac Agency Performance" />
@@ -107,7 +108,6 @@ export function App() {
       </aside>
 
       <div className="main-shell">
-        <SpaceBackground />
         <header className="topbar">
           <span className="topbar-breadcrumb">
             Kinku <span className="separator">/</span> {showConsolidated ? 'Consolidado' : project.name}{' '}
