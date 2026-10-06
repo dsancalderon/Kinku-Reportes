@@ -1,4 +1,4 @@
-:root{font-family:'Manrope',Arial,Helvetica,sans-serif;color:#eef6f2;background:#030b0b;font-synthesis:none;line-height:1.5;font-weight:400;--lime:#b8e04a;--lime-soft:#d4f39a;--line:#b4f0d21f;--muted:#9db5ad;--dim:#6c827b;--project:#eb603f;--sidebar:236px;--gutter:18px;--glass:linear-gradient(155deg,#1d3d3a75 0%,#0c22208f 55%,#081716a3 100%);--glass-row:#0f27259e;--glass-border:#b4f0d238;--glass-shadow:inset 0 1px 0 #ffffff14,0 18px 50px #00000080,0 0 28px #6fd2a012;--blur:blur(18px) saturate(1.2)}
+:root{font-family:'Manrope',Arial,Helvetica,sans-serif;color:#eef6f2;background:#030b0b;font-synthesis:none;line-height:1.5;font-weight:400;--lime:#b8e04a;--lime-soft:#d4f39a;--line:#b4f0d21f;--muted:#9db5ad;--dim:#6c827b;--project:#eb603f;--sidebar:236px;--gutter:18px;--glass:linear-gradient(155deg,#1d3d3ab3 0%,#0c2220c7 55%,#081716d6 100%);--glass-row:#0f2725c7;--glass-border:#b4f0d238;--glass-shadow:inset 0 1px 0 #ffffff14,0 18px 50px #00000080,0 0 28px #6fd2a012;--blur:blur(18px) saturate(1.2)}
 *{box-sizing:border-box}
 body{margin:0;background:#030b0b}
 button,select{font:inherit}
@@ -19,7 +19,7 @@ button:hover{filter:brightness(1.15)}
 .aurora .ribbon-5{width:55vw;height:3.5vh;left:-6vw;top:78vh;background:linear-gradient(90deg,#0000,#c4f25a 50%,#0000);filter:blur(16px);opacity:.55;transform:rotate(-34deg)}
 .aurora .ribbon-6{width:40vw;height:3vh;right:-4vw;top:30vh;background:linear-gradient(90deg,#0000,#b5ec4f 50%,#0000);filter:blur(18px);opacity:.45;transform:rotate(-36deg)}
 .aurora .glow{width:60vw;height:60vh;left:20vw;top:20vh;background:radial-gradient(circle,#2a6e5a80,#0000 70%);filter:blur(40px)}
-.aurora::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,#0000 40%,#020807b3 100%)}
+.aurora::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,#0000 40%,#020807b3 100%),#01060659}
 
 .sidebar{width:var(--sidebar);position:fixed;top:var(--gutter);bottom:var(--gutter);left:var(--gutter);background:var(--glass);border:1px solid var(--glass-border);border-radius:24px;box-shadow:var(--glass-shadow);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);padding:26px 16px 24px;display:flex;flex-direction:column;z-index:5;overflow-y:auto;scrollbar-width:none}
 .sidebar::-webkit-scrollbar{display:none}
