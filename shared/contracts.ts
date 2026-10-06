@@ -4,7 +4,7 @@ export interface ConnectionStatus {
   projectId: import('./projects').ProjectId;
   provider: Provider;
   label: string;
-  state: 'not_connected';
+  state: 'not_connected' | 'connected' | 'error';
   lastSuccessfulSyncAt: string | null;
 }
 
@@ -28,7 +28,7 @@ export interface CampaignMetrics {
 
 export interface Overview {
   projectId: import('./projects').ProjectId;
-  mode: 'setup';
+  mode: 'setup' | 'live';
   reportingTimezone: 'America/Bogota';
   connections: ConnectionStatus[];
   campaigns: CampaignMetrics[];
