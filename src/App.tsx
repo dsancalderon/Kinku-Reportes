@@ -5,7 +5,7 @@ import { getOverview } from './lib/api';
 import { money, number } from './lib/historical';
 import { SyncStatus } from './components/SyncStatus';
 import { Consolidated } from './components/Consolidated';
-import { SpaceBackground } from './components/SpaceBackground';
+import { AuroraBackground } from './components/AuroraBackground';
 
 type View = 'summary' | Provider | 'connections';
 
@@ -75,7 +75,7 @@ export function App() {
 
   return (
     <div className="app" style={{ '--project': project.accent } as CSSProperties}>
-      <SpaceBackground />
+      <AuroraBackground />
       <aside className="sidebar">
         <a href="#dashboard" className="agency">
           <img src="/brand/tictac-logo.png" alt="TicTac Agency Performance" />
@@ -101,10 +101,6 @@ export function App() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <p>El sonido al éxito.</p>
-          <span className="sidebar-caption">TIC TAC / AGENCY PERFORMANCE</span>
-        </div>
       </aside>
 
       <div className="main-shell">
