@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import type { Overview, Provider, ReportView, ReportRowItem } from '../shared/contracts';
+import type { Overview, Provider, ReportView, ReportRowItem, ConnectionStatus } from '../shared/contracts';
 import { projects, providerLabels, type ProjectId } from '../shared/projects';
 import { getOverview } from './lib/api';
 import { money, number } from './lib/historical';
@@ -181,6 +181,7 @@ export function App() {
                 {project.providers.map(provider => {
                   const conn = overview?.connections?.find(c => c.provider === provider);
                   const isConnected = conn?.state === 'connected';
+                  const isError = conn?.state === 'error';
                   return (
                     <article className="panel connection" key={provider}>
                       <div className="provider-icon">
@@ -193,13 +194,29 @@ export function App() {
                           ? 'Gestión comercial'
                           : 'Campañas y rendimiento'}
                       </p>
-                      <span className={isConnected ? 'pending' : 'pending'}>
+                      <span
+                        className="pending"
+                        style={
+                          isError
+                            ? { borderColor: '#e07a5f66', color: '#f08a6f', background: '#e07a5f15' }
+                            : isConnected
+                            ? { borderColor: '#a5c92b66', color: '#c4e366', background: '#a5c92b15' }
+                            : {}
+                        }
+                      >
                         {error
                           ? 'Estado no disponible'
                           : isConnected
                           ? 'Conectado a la API'
+                          : isError
+                          ? 'Requiere acceso Explorer'
                           : 'Pendiente de conexión'}
                       </span>
+                      {conn?.details && (
+                        <p style={{ fontSize: '9px', color: '#dfb278', margin: '6px 0 12px', lineHeight: 1.4 }}>
+                          {conn.details}
+                        </p>
+                      )}
                       <div className="connection-bottom">
                         Última sincronización{' '}
                         <strong>
@@ -214,7 +231,11 @@ export function App() {
               </div>
             </section>
           ) : view === 'google_ads' ? (
-            <GoogleReport projectName={project.name} onNavigate={() => setView('connections')} />
+            <GoogleReport
+              projectName={project.name}
+              connection={overview?.connections?.find(c => c.provider === 'google_ads')}
+              onNavigate={() => setView('connections')}
+            />
           ) : view === 'hubspot' ? (
             <HubspotReport projectName={project.name} onNavigate={() => setView('connections')} />
           ) : !overview ? (
@@ -549,17 +570,78 @@ function Empty({ title, text, action }: { title: string; text: string; action: (
   );
 }
 
-function GoogleReport({ projectName, onNavigate }: { projectName: string; onNavigate: () => void }) {
+function GoogleReport({
+  projectName,
+  connection,
+  onNavigate,
+}: {
+  projectName: string;
+  connection?: ConnectionStatus;
+  onNavigate: () => void;
+}) {
+  const isCloudTestMode =
+    connection?.details?.includes('Test access') ||
+    connection?.details?.includes('Test') ||
+    connection?.details?.includes('Explorer');
+
   return (
-    <section className="panel empty">
-      <div className="provider-icon">G</div>
-      <h2>Google Ads · {projectName}</h2>
-      <p>
-        Esta fuente se encuentra pendiente de conexión o autorización. Para garantizar total fidelidad con tus cuentas reales, no se muestran cifras simuladas ni predeterminadas.
-      </p>
-      <button className="primary" onClick={onNavigate}>
-        Ver conexiones ↗
-      </button>
+    <section className="panel" style={{ maxWidth: '840px', margin: '20px auto', padding: '30px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+        <div className="provider-icon" style={{ margin: 0, fontSize: '32px' }}>G</div>
+        <div>
+          <p className="eyebrow" style={{ margin: '0 0 4px' }}>GOOGLE ADS · ESTADO DE INTEGRACIÓN</p>
+          <h2 style={{ margin: 0, fontSize: '20px' }}>Google Ads · {projectName}</h2>
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: '#1c1f17',
+          border: '1px solid #4a3e26',
+          borderRadius: '7px',
+          padding: '18px 20px',
+          marginBottom: '22px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span style={{ color: '#f59e0b', fontSize: '16px' }}>⚠️</span>
+          <strong style={{ color: '#fef3c7', fontSize: '13px' }}>
+            {isCloudTestMode
+              ? 'Proyecto Google Cloud en nivel "Test Access"'
+              : 'Verificación de credenciales de Google Ads'}
+          </strong>
+        </div>
+        <p style={{ margin: 0, fontSize: '12px', color: '#d1d5db', lineHeight: 1.6 }}>
+          {connection?.details ||
+            'La clave JSON de la cuenta de servicio existe en el servidor, pero Google Ads API requiere nivel de acceso "Explorer" para consultar cuentas publicitarias de producción.'}
+        </p>
+      </div>
+
+      <div style={{ fontSize: '12px', color: '#a0af97', lineHeight: 1.7, marginBottom: '24px' }}>
+        <strong style={{ color: '#e5e7eb', display: 'block', marginBottom: '10px', fontSize: '13px' }}>
+          Cómo habilitar la extracción de campañas de producción:
+        </strong>
+        <ol style={{ margin: 0, paddingLeft: '22px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <li>
+            Entra a <strong>Google Cloud Console</strong> (<a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" style={{ color: 'var(--lime)', textDecoration: 'underline' }}>console.cloud.google.com</a>) y selecciona el proyecto <code>kinku-reporting</code>.
+          </li>
+          <li>
+            Dirígete a <strong>APIs y servicios → Google Ads API</strong>.
+          </li>
+          <li>
+            En el apartado <strong>Nivel de acceso (Access Level)</strong>, haz clic en <strong>Solicitar acceso Explorer (Explorer Access)</strong>. <em>(Google lo otorga para uso interno de la organización)</em>.
+          </li>
+          <li>
+            En tu cuenta de Google Ads (ID <code>9240696515</code>), ve a <strong>Administración → Acceso y seguridad</strong> y confirma que el correo de la cuenta de servicio (<code>api-reporting@kinku-reporting.iam.gserviceaccount.com</code>) tenga acceso de <strong>Solo lectura</strong>.
+          </li>
+        </ol>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button className="primary" onClick={onNavigate}>
+          Ver panel de Conexiones ↗
+        </button>
+      </div>
     </section>
   );
 }

@@ -10,6 +10,7 @@ import { getConnections } from './integrations/index.js';
 import type { ProjectId } from '../shared/projects.js';
 import { getSupabase } from './db/supabase.js';
 import { classifyCampaignLine, getObjectiveForLine } from './integrations/meta.js';
+import { checkGoogleAdsStatus } from './integrations/google.js';
 
 const money = (val: number | null) =>
   val === null || val === undefined || isNaN(val)
@@ -251,13 +252,22 @@ export async function getOverviewData(
     });
 
     const hasSynced = !!schedule?.last_successful_at;
+    const googleStatus = await checkGoogleAdsStatus();
 
     const connections: ConnectionStatus[] = baseConnections.map(conn => {
-      if (conn.provider === 'meta' && hasSynced) {
+      if (conn.provider === 'meta') {
         return {
           ...conn,
-          state: 'connected',
-          lastSuccessfulSyncAt: schedule.last_successful_at,
+          state: hasSynced ? 'connected' : 'not_connected',
+          lastSuccessfulSyncAt: schedule?.last_successful_at || null,
+        };
+      }
+      if (conn.provider === 'google_ads') {
+        return {
+          ...conn,
+          state: googleStatus.state === 'connected' ? 'connected' : googleStatus.state === 'error' ? 'error' : 'not_connected',
+          details: googleStatus.errorMessage,
+          lastSuccessfulSyncAt: null,
         };
       }
       return conn;

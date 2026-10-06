@@ -6,6 +6,7 @@ export interface ConnectionStatus {
   label: string;
   state: 'not_connected' | 'connected' | 'error';
   lastSuccessfulSyncAt: string | null;
+  details?: string;
 }
 
 export interface MonthlyTarget {

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isProjectId, type ProjectId } from '../shared/projects.js';
 import { syncMetaForProject } from '../server/integrations/meta.js';
+import { syncGoogleAdsForProject } from '../server/integrations/google.js';
 
 export default async function syncHandler(req: IncomingMessage, res: ServerResponse) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -34,9 +35,23 @@ export default async function syncHandler(req: IncomingMessage, res: ServerRespo
   }
 
   try {
-    const result = await syncMetaForProject(projectId);
+    const metaResult = await syncMetaForProject(projectId);
+    let googleResult = null;
+    if (projectId === 'pekin') {
+      try {
+        googleResult = await syncGoogleAdsForProject(projectId);
+      } catch (gErr: any) {
+        console.warn('Google Ads sync omitido o con error de permisos:', gErr?.message);
+      }
+    }
+
     res.writeHead(200);
-    res.end(JSON.stringify({ ok: true, message: result.message, count: result.count }));
+    res.end(JSON.stringify({
+      ok: true,
+      message: metaResult.message,
+      metaCount: metaResult.count,
+      googleResult,
+    }));
   } catch (err: any) {
     console.error('Error en /api/sync:', err);
     res.writeHead(500);
