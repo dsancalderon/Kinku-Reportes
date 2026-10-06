@@ -28,9 +28,9 @@ export function App() {
       <div className="workspace-label">KINKU <span>REPORTING STUDIO</span></div>
       <p className="nav-label">PROYECTOS</p>
       <nav className="project-nav" aria-label="Proyectos">{projects.map((item, i) => <button key={item.id} aria-pressed={projectId === item.id} onClick={() => selectProject(item.id)}><span className="project-dot" style={{background:item.accent}} />{item.name}<small>0{i+1}</small></button>)}</nav>
-      <div className="sidebar-bottom"><span className="online-dot" /> Espacio del equipo<p>El sonido al éxito.</p><span className="sidebar-caption">TIC TAC / AGENCY PERFORMANCE</span></div>
+      <div className="sidebar-bottom"><p>El sonido al éxito.</p><span className="sidebar-caption">TIC TAC / AGENCY PERFORMANCE</span></div>
     </aside>
-    <div className="main-shell"><header className="topbar"><span>Kinku <span className="separator">/</span> {project.name} <span className="separator">/</span> Reporte de rendimiento</span><span className="team-badge">EQUIPO INTERNO <span className="avatar">TT</span></span></header>
+    <div className="main-shell"><header className="topbar"><span>Kinku <span className="separator">/</span> {project.name} <span className="separator">/</span> Reporte de rendimiento</span></header>
       <main id="dashboard">
         <div className="page-heading"><div><p className="eyebrow">TIC TAC AGENCY × KINKU</p><h1>Todo el panorama.<br/><span>Una mejor decisión.</span></h1></div><div className="mode-controls"><label htmlFor="data-mode">FUENTE DEL REPORTE</label><select id="data-mode" value={mode} onChange={event => setMode(event.target.value as typeof mode)}><option value="historical">Informe histórico · septiembre 2026</option><option value="live">Conexiones en vivo · pendientes</option></select><span>America/Bogota · {mode === 'historical' ? '01 — 30 SEP, 2026' : 'Sin período sincronizado'}</span></div></div>
         <SyncStatus key={projectId} projectId={projectId} sync={overview?.projectId === projectId ? overview.sync : undefined}/>
