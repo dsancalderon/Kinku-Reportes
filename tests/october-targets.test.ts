@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import targets from '../data/flows/octubre-2026.json';
+import { octoberTargets as targets } from '../data/flows/octubre-2026';
 import { classifyCampaignLine } from '../server/integrations/meta';
 
 test('las metas de octubre siguen las ocho filas de campaña del Flow', () => {

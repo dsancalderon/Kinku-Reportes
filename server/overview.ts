@@ -11,9 +11,7 @@ import type { ProjectId } from '../shared/projects.js';
 import { getSupabase } from './db/supabase.js';
 import { classifyCampaignLine, getObjectiveForLine } from './integrations/meta.js';
 import { checkGoogleAdsStatus } from './integrations/google.js';
-import octoberTargets from '../data/flows/octubre-2026.json';
-
-const configuredOctoberTargets = octoberTargets as MonthlyTarget[];
+import { octoberTargets } from '../data/flows/octubre-2026.js';
 
 const money = (val: number | null) =>
   val === null || val === undefined || isNaN(val)
@@ -32,7 +30,7 @@ export async function getOverviewData(
   const baseConnections = getConnections(projectId);
   const supabase = getSupabase();
   const configuredTargets = selectedMonth === '2026-10'
-    ? configuredOctoberTargets.filter(target => target.projectId === projectId)
+    ? octoberTargets.filter(target => target.projectId === projectId)
     : [];
 
   if (!supabase) {
