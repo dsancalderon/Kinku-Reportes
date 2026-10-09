@@ -7,6 +7,7 @@ import { SyncStatus } from './components/SyncStatus';
 import { Consolidated } from './components/Consolidated';
 import { AuroraBackground } from './components/AuroraBackground';
 import { MetaDetails } from './components/MetaDetails';
+import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
 
 type View = 'summary' | Provider | 'connections';
 
@@ -295,7 +296,11 @@ export function App() {
                 <SpendChart report={report} />
               </div>
 
+              <DailyVisual report={report} campaigns={overview.campaigns} />
+
               <CampaignTable report={report} />
+
+              <BreakdownVisuals campaigns={overview.campaigns} />
 
               <MetaDetails campaigns={overview.campaigns} month={selectedMonth} />
 
@@ -740,12 +745,14 @@ function GoogleReport({
         </article>
       </div>
 
+      <GoogleVisuals campaigns={campaigns} />
+
       <section className="panel" style={{ marginTop: '24px' }}>
         <div className="panel-heading">
           <h3>Detalle por campaña en Google Ads</h3>
           <span className="mini-tag">API v25 · Cuenta 9240696515</span>
         </div>
-        <table className="campaign-table">
+        <div className="table-scroll"><table className="campaign-table">
           <thead>
             <tr>
               <th>Campaña</th>
@@ -783,7 +790,7 @@ function GoogleReport({
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </section>
 
       <Executive

@@ -1,6 +1,7 @@
 import type { Overview } from '../../shared/contracts';
 import { buildConsolidated } from '../lib/consolidated';
 import { money, number } from '../lib/historical';
+import { ConsolidatedVisuals } from './ReportVisuals';
 
 export function Consolidated({ overviews, month, loading, error }: { overviews: Overview[]; month: string; loading: boolean; error: string }) {
   const { rows, metaLeads, metaLeadTarget, googleConversions, spend } = buildConsolidated(overviews);
@@ -18,6 +19,7 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
       </div>
     </div>
     {error && <p role="alert" className="consolidated-error">{error}</p>}
+    {!loading && !error && <ConsolidatedVisuals overviews={overviews} />}
     {loading ? <div className="panel empty"><h2>Cargando consolidado…</h2></div> :
       <div className="panel consolidated-panel">
         <div className="table-scroll"><table>
