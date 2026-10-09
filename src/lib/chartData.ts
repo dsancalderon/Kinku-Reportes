@@ -1,4 +1,4 @@
-import type { CampaignMetrics, Overview, ReportView } from '../../shared/contracts';
+import type { CampaignMetrics, MetaBreakdown, Overview, ReportView } from '../../shared/contracts';
 import { projects } from '../../shared/projects';
 
 export function projectChartData(overviews: Overview[]) {
@@ -30,4 +30,20 @@ export function dailyChartData(report: ReportView, campaigns: CampaignMetrics[])
   }
   let cumulative = 0;
   return [...days].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value, cumulative: cumulative += value }));
+}
+
+export function demographicChartData(items: MetaBreakdown[], metric: 'leads' | 'impressions' | 'engagement') {
+  const groups = new Map<string, { age: string; female?: number; male?: number; unknown?: number }>();
+  for (const item of items) {
+    const [age, rawSex] = item.label.split(/\s*·\s*/);
+    const sex = rawSex?.toLowerCase() === 'female' ? 'female' : rawSex?.toLowerCase() === 'male' ? 'male' : 'unknown';
+    const group = groups.get(age) || { age };
+    group[sex] = (group[sex] || 0) + item[metric];
+    groups.set(age, group);
+  }
+  return [...groups.values()].sort((a, b) => {
+    const aStart = Number.parseInt(a.age, 10);
+    const bStart = Number.parseInt(b.age, 10);
+    return (Number.isNaN(aStart) ? Infinity : aStart) - (Number.isNaN(bStart) ? Infinity : bStart);
+  });
 }

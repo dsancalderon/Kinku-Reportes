@@ -1,27 +1,30 @@
 import { useState } from 'react';
 import type { CampaignMetrics, Overview, ReportView, MetaBreakdown } from '../../shared/contracts';
-import { dailyChartData, projectChartData } from '../lib/chartData';
+import { dailyChartData, demographicChartData, projectChartData } from '../lib/chartData';
+import { meetsMonthlyPace, monthlyPace } from '../lib/pace';
 import { money, number } from '../lib/historical';
 
-function PercentBars({ rows, unit, currency = false }: { rows: { label: string; actual: number | null; target: number | null }[]; unit: string; currency?: boolean }) {
+function PercentBars({ rows, unit, currency = false, month }: { rows: { label: string; actual: number | null; target: number | null }[]; unit: string; currency?: boolean; month?: string }) {
   const format = currency ? money : number;
   return <div className="viz-bars">{rows.map(row => {
     const pct = row.actual !== null && row.target !== null && row.target > 0 ? row.actual / row.target * 100 : null;
+    const onPace = month ? meetsMonthlyPace(row.actual, row.target, month) : null;
     return <div className="viz-bar-row" key={row.label}>
       <div className="viz-bar-label"><strong>{row.label}</strong><span>{row.actual === null ? `Sin datos / meta ${row.target === null ? 'sin definir' : `${format(row.target)} ${unit}`}` : `${format(row.actual)} / ${row.target === null ? 'sin meta' : format(row.target)} ${unit}`}</span></div>
-      <div className="viz-track" role="img" aria-label={`${row.label}: ${pct === null ? 'sin porcentaje verificable' : `${number(pct)}% de ${unit}`}`}><i style={{ width: `${Math.min(100, Math.max(0, pct || 0))}%` }} /></div>
-      <small>{pct === null ? '—' : `${number(pct)}%`}</small>
+      <div className="viz-track" role="img" aria-label={`${row.label}: ${pct === null ? 'sin porcentaje verificable' : `${number(pct)}% de ${unit}${onPace === null ? '' : onPace ? ', al ritmo esperado' : ', debajo del ritmo esperado'}`}`}><i className={month ? onPace === null ? '' : onPace ? 'on-track' : 'behind' : 'neutral'} style={{ width: `${Math.min(100, Math.max(0, pct || 0))}%` }} /></div>
+      <small className={onPace === null ? '' : onPace ? 'on-track' : 'behind'}>{pct === null ? '—' : `${number(pct)}%`}</small>
     </div>;
   })}</div>;
 }
 
-export function ConsolidatedVisuals({ overviews }: { overviews: Overview[] }) {
+export function ConsolidatedVisuals({ overviews, month }: { overviews: Overview[]; month: string }) {
   const rows = projectChartData(overviews);
+  const pace = monthlyPace(month);
   if (!rows.length) return null;
   return <section className="viz-section" aria-label="Comparativo gráfico de proyectos">
     <div className="dashboard-heading"><div><p className="eyebrow">LECTURA VISUAL / META ADS</p><h2>Resultados por proyecto</h2></div></div>
     <div className="viz-grid">
-      <article className="panel viz-card"><div className="panel-heading"><h3>Leads frente a la meta</h3><span className="mini-tag">LEADS</span></div><PercentBars rows={rows.map(row => ({ label: row.name, actual: row.leads, target: row.leadTarget }))} unit="leads" /><p className="table-note">Solo leads de Meta. Cada barra representa la proporción de la meta mensual.</p></article>
+      <article className="panel viz-card"><div className="panel-heading"><h3>Leads frente a la meta</h3><span className="mini-tag">LEADS</span></div><PercentBars rows={rows.map(row => ({ label: row.name, actual: row.leads, target: row.leadTarget }))} unit="leads" month={month} /><p className="table-note">Solo leads de Meta. Verde al alcanzar el ritmo esperado ({number(pace.percent)}% al día {pace.day}); coral por debajo.</p></article>
       <article className="panel viz-card"><div className="panel-heading"><h3>Inversión frente al presupuesto</h3><span className="mini-tag">COP</span></div><PercentBars rows={rows.map(row => ({ label: row.name, actual: row.spend, target: row.budget }))} unit="COP" currency /><p className="table-note">Solo inversión de Meta. La barra al 100% indica presupuesto ejecutado, no cumplimiento de resultados.</p></article>
     </div>
   </section>;
@@ -54,16 +57,26 @@ export function BreakdownVisuals({ campaigns }: { campaigns: CampaignMetrics[] }
   const unit = leadCampaign.lineName === 'RECONOCIMIENTO' ? 'impresiones' : leadCampaign.lineName === 'INTERACCIÓN' ? 'interacciones' : 'leads';
   const platforms = (leadCampaign.platformBreakdown || []).map(item => ({ label: item.label, value: breakdownValue(leadCampaign, item) }));
   const creatives = (leadCampaign.creatives || []).map(item => ({ label: item.label, value: breakdownValue(leadCampaign, item) })).sort((a, b) => b.value - a.value).slice(0, 5);
-  const demographics = (leadCampaign.demographics || []).map(item => ({ label: item.label, value: breakdownValue(leadCampaign, item) })).sort((a, b) => b.value - a.value).slice(0, 6);
   return <section className="viz-section" aria-label="Desgloses gráficos de Meta Ads">
     <div className="dashboard-heading"><div><p className="eyebrow">DESGLOSE / CAMPAÑA</p><h2>Dónde se generan los resultados</h2><p className="subtle viz-campaign-name">{leadCampaign.campaignName} · {unit}</p></div><label className="viz-picker">Campaña<select aria-label="Campaña para los gráficos de desglose" value={leadCampaign.campaignId} onChange={event => setSelectedId(event.target.value)}>{candidates.map(campaign => <option key={campaign.campaignId} value={campaign.campaignId}>{campaign.campaignName}</option>)}</select></label></div>
     <div className="viz-grid">
       <RankedBars title="Resultados por plataforma" rows={platforms} unit={unit} empty="Sin desglose por plataforma" />
       <RankedBars title="Creativos destacados" rows={creatives} unit={unit} empty="Sin desglose por anuncio" />
-      <RankedBars title="Audiencia por edad y sexo" rows={demographics} unit={unit} empty="Sin desglose de audiencia" />
+      <DemographicChart campaign={leadCampaign} unit={unit} />
     </div>
     <p className="table-note">Los gráficos muestran una sola campaña para evitar mezclar impresiones, interacciones y leads. El detalle de todas las campañas sigue en las tablas.</p>
   </section>;
+}
+
+function DemographicChart({ campaign, unit }: { campaign: CampaignMetrics; unit: string }) {
+  const metric = unit === 'impresiones' ? 'impressions' : unit === 'interacciones' ? 'engagement' : 'leads';
+  const groups = demographicChartData(campaign.demographics || [], metric);
+  const max = Math.max(1, ...groups.flatMap(group => [group.female || 0, group.male || 0, group.unknown || 0]));
+  const sexes = [{ key: 'female', label: 'Mujeres' }, { key: 'male', label: 'Hombres' }, { key: 'unknown', label: 'Sin especificar' }] as const;
+  return <article className="panel viz-card viz-demographics"><div className="panel-heading"><h3>Edad y sexo</h3><span className="mini-tag">{unit.toUpperCase()}</span></div>
+    {groups.length ? <div className="demographic-grid">{groups.map(group => <div className="demographic-age" key={group.age}><strong>{group.age} años</strong>{sexes.filter(sex => group[sex.key] !== undefined && (sex.key !== 'unknown' || (group.unknown || 0) > 0)).map(sex => <div className={`demographic-row ${sex.key}`} key={sex.key}><span>{sex.label}</span><div className="viz-track" role="img" aria-label={`${group.age} años, ${sex.label}: ${number(group[sex.key]!)} ${unit}`}><i style={{ width: `${group[sex.key]! / max * 100}%` }} /></div><b>{number(group[sex.key]!)}</b></div>)}</div>)}</div> : <p className="subtle viz-empty">Sin desglose de edad y sexo para esta campaña.</p>}
+    <p className="table-note">Cada barra representa {unit} de un segmento de la campaña seleccionada. La escala es común para todas las edades y sexos.</p>
+  </article>;
 }
 
 export function GoogleVisuals({ campaigns }: { campaigns: CampaignMetrics[] }) {

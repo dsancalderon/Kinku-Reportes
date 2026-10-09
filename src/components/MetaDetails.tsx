@@ -71,7 +71,7 @@ export function MetaDetails({ campaigns, month, projectId }: { campaigns: Campai
         </tbody></table></div><p className="table-note">Reacciones, guardados y reproducciones son desgloses de actividad; no se agregan al total de interacciones.</p>
       </section>}
 
-    <details className="panel meta-expand"><summary>Edad y sexo <span>{demographics.length ? `${demographics.length} segmentos` : 'Pendiente de sincronización'}</span></summary>
+    <details className="panel meta-expand"><summary>Datos tabulares de edad y sexo <span>{demographics.length ? `${demographics.length} segmentos` : 'Pendiente de sincronización'}</span></summary>
       <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Segmento</th><th>Resultado</th><th>Impresiones</th><th>Alcance</th></tr></thead><tbody>{demographics.length ? demographics.map(({ campaign, item }) => <tr key={`${campaign.campaignId}:${item.label}`}><td>{campaign.campaignName}</td><td>{item.label}</td><td>{number(result(campaign, item))} <small>{unit(campaign)}</small></td><td>{number(item.impressions)}</td><td>{number(item.reach)}</td></tr>) : <tr><td colSpan={5}>Meta todavía no ha entregado este desglose para el período.</td></tr>}</tbody></table></div>
     </details>
 

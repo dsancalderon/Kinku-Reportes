@@ -7,6 +7,7 @@ import { SyncStatus } from './components/SyncStatus';
 import { Consolidated } from './components/Consolidated';
 import { AuroraBackground } from './components/AuroraBackground';
 import { MetaDetails } from './components/MetaDetails';
+import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
 
 type View = 'summary' | Provider | 'connections';
@@ -292,7 +293,7 @@ export function App() {
               <Metrics stats={report.stats} />
 
               <div className="dashboard-grid">
-                <GoalChart report={report} />
+                <GoalChart report={report} month={selectedMonth} />
                 <SpendChart report={report} />
               </div>
 
@@ -403,7 +404,8 @@ function Metrics({ stats }: { stats: readonly [string, string, string][] }) {
   );
 }
 
-function GoalChart({ report }: { report: ReportView }) {
+function GoalChart({ report, month }: { report: ReportView; month: string }) {
+  const pace = monthlyPace(month);
   const rowsWithTargets = report.rows.filter(
     (row): row is ReportRowItem & { target: number } => row.target !== null && row.target > 0
   );
@@ -447,23 +449,24 @@ function GoalChart({ report }: { report: ReportView }) {
         <h3>Resultados vs. meta</h3>
         <span className="mini-tag">{report.unit}</span>
       </div>
-      <p className="subtle">El objetivo marca el punto de referencia.</p>
+      <p className="subtle">Ritmo esperado: {number(pace.percent)}% de la meta al día {pace.day} de {pace.daysInMonth} (Bogotá).</p>
       <div className="goal-chart">
         {report.rows.map(row => {
           const hasRowTarget = typeof row.target === 'number' && row.target > 0;
           const pct = hasRowTarget && row.result != null && row.target ? (row.result / row.target) * 100 : null;
+          const onPace = meetsMonthlyPace(row.result, row.target, month);
           const fillWidth = pct !== null ? Math.min(100, Math.max(0, (pct / max) * 100)) : 0;
 
           return (
             <div className="goal-row" key={row.name}>
               <div>
                 <span>{row.name}</span>
-                <strong>{pct !== null ? `${number(pct)}%` : '—'}</strong>
+                <strong className={onPace === null ? '' : onPace ? 'on-track' : 'behind'}>{pct !== null ? `${number(pct)}%` : '—'}</strong>
               </div>
               <div className="goal-track">
-                <div className="goal-fill" style={{ width: `${fillWidth}%` }} />
+                <div className={`goal-fill ${onPace === null ? '' : onPace ? 'on-track' : 'behind'}`} style={{ width: `${fillWidth}%` }} />
                 {hasRowTarget && (
-                  <span className="target-marker" style={{ left: `${(100 / max) * 100}%` }} />
+                  <>{pace.percent < 100 && <span className="pace-marker" style={{ left: `${(pace.percent / max) * 100}%` }} title={`Ritmo esperado: ${number(pace.percent)}%`} />}<span className="target-marker" style={{ left: `${(100 / max) * 100}%` }} title="Meta mensual" /></>
                 )}
               </div>
               <small>
@@ -477,12 +480,13 @@ function GoalChart({ report }: { report: ReportView }) {
       <div className="chart-legend">
         <span>
           <i />
-          Resultado del período
+          Resultado: verde al ritmo, coral por debajo
         </span>
         <span>
           <b />
-          Meta del período
+          Meta mensual
         </span>
+        {pace.percent < 100 && <span><b className="pace-legend" />Ritmo esperado al corte</span>}
       </div>
     </section>
   );
