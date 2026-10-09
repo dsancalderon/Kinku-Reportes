@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CampaignMetrics, Overview, ReportView, MetaBreakdown } from '../../shared/contracts';
+import type { ProjectId } from '../../shared/projects';
 import { dailyChartData, demographicChartData, projectChartData } from '../lib/chartData';
+import { getCreativePreviews } from '../lib/api';
 import { meetsMonthlyPace, monthlyPace } from '../lib/pace';
 import { money, number } from '../lib/historical';
 
@@ -49,23 +51,54 @@ function breakdownValue(campaign: CampaignMetrics, item: MetaBreakdown) {
   return campaign.lineName === 'RECONOCIMIENTO' ? item.impressions : campaign.lineName === 'INTERACCIÓN' ? item.engagement : item.leads;
 }
 
-export function BreakdownVisuals({ campaigns }: { campaigns: CampaignMetrics[] }) {
+type CreativePreview = { imageUrl: string; thumbnailUrl: string | null };
+
+export function BreakdownVisuals({ campaigns, month, projectId }: { campaigns: CampaignMetrics[]; month: string; projectId: ProjectId }) {
   const candidates = campaigns.filter(campaign => campaign.provider === 'meta' && (campaign.platformBreakdown?.length || campaign.creatives?.length || campaign.demographics?.length));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<Record<string, CreativePreview>>({});
+  const [previewStatus, setPreviewStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  useEffect(() => {
+    setPreviews({});
+    if (!campaigns.some(campaign => campaign.provider === 'meta' && campaign.creatives?.length)) return;
+    const controller = new AbortController();
+    setPreviewStatus('loading');
+    getCreativePreviews(projectId, month, controller.signal)
+      .then(images => { if (!controller.signal.aborted) { setPreviews(images); setPreviewStatus('loaded'); } })
+      .catch(() => { if (!controller.signal.aborted) setPreviewStatus('error'); });
+    return () => controller.abort();
+  }, [campaigns, month, projectId]);
   if (!candidates.length) return null;
   const leadCampaign = candidates.find(campaign => campaign.campaignId === selectedId) || candidates.find(campaign => !['RECONOCIMIENTO', 'INTERACCIÓN'].includes(campaign.lineName || '')) || candidates[0];
   const unit = leadCampaign.lineName === 'RECONOCIMIENTO' ? 'impresiones' : leadCampaign.lineName === 'INTERACCIÓN' ? 'interacciones' : 'leads';
   const platforms = (leadCampaign.platformBreakdown || []).map(item => ({ label: item.label, value: breakdownValue(leadCampaign, item) }));
-  const creatives = (leadCampaign.creatives || []).map(item => ({ label: item.label, value: breakdownValue(leadCampaign, item) })).sort((a, b) => b.value - a.value).slice(0, 5);
+  const creatives = (leadCampaign.creatives || []).map(item => ({ id: item.id, label: item.label, value: breakdownValue(leadCampaign, item) })).sort((a, b) => b.value - a.value).slice(0, 5);
   return <section className="viz-section" aria-label="Desgloses gráficos de Meta Ads">
     <div className="dashboard-heading"><div><p className="eyebrow">DESGLOSE / CAMPAÑA</p><h2>Dónde se generan los resultados</h2><p className="subtle viz-campaign-name">{leadCampaign.campaignName} · {unit}</p></div><label className="viz-picker">Campaña<select aria-label="Campaña para los gráficos de desglose" value={leadCampaign.campaignId} onChange={event => setSelectedId(event.target.value)}>{candidates.map(campaign => <option key={campaign.campaignId} value={campaign.campaignId}>{campaign.campaignName}</option>)}</select></label></div>
     <div className="viz-grid">
       <RankedBars title="Resultados por plataforma" rows={platforms} unit={unit} empty="Sin desglose por plataforma" />
-      <RankedBars title="Creativos destacados" rows={creatives} unit={unit} empty="Sin desglose por anuncio" />
+      <CreativeBars rows={creatives} previews={previews} previewStatus={previewStatus} unit={unit} />
       <DemographicChart campaign={leadCampaign} unit={unit} />
     </div>
-    <p className="table-note">Los gráficos muestran una sola campaña para evitar mezclar impresiones, interacciones y leads. El detalle de todas las campañas sigue en las tablas.</p>
+    <p className="table-note">Selecciona una campaña para ver sus plataformas, anuncios destacados y distribución por edad y sexo. Las impresiones, interacciones y leads conservan sus unidades propias.</p>
   </section>;
+}
+
+function CreativeBars({ rows, previews, previewStatus, unit }: { rows: { id: string; label: string; value: number }[]; previews: Record<string, CreativePreview>; previewStatus: 'loading' | 'loaded' | 'error'; unit: string }) {
+  const max = Math.max(1, ...rows.map(row => row.value));
+  return <article className="panel viz-card"><div className="panel-heading"><h3>Creativos destacados</h3><span className="mini-tag">{unit.toUpperCase()}</span></div>
+    {rows.length ? <div className="viz-creative-list">{rows.map(row => <div className="viz-creative-row" key={row.id}>
+      <CreativeThumbnail preview={previews[row.id]} label={row.label} status={previewStatus} />
+      <div className="viz-creative-content"><div className="viz-creative-label"><span title={row.label}>{row.label}</span><strong>{number(row.value)}</strong></div><div className="viz-track" role="img" aria-label={`${row.label}: ${number(row.value)} ${unit}`}><i style={{ width: `${row.value / max * 100}%` }} /></div></div>
+    </div>)}</div> : <p className="subtle viz-empty">Sin desglose por anuncio</p>}
+  </article>;
+}
+
+function CreativeThumbnail({ preview, label, status }: { preview?: CreativePreview; label: string; status: 'loading' | 'loaded' | 'error' }) {
+  const [url, setUrl] = useState(preview?.thumbnailUrl || preview?.imageUrl || '');
+  useEffect(() => setUrl(preview?.thumbnailUrl || preview?.imageUrl || ''), [preview]);
+  if (!url) return <span className="viz-creative-placeholder" aria-label={`Miniatura de ${label} no disponible`}>{status === 'loading' ? 'Cargando' : status === 'error' ? 'Error' : 'Sin imagen'}</span>;
+  return <a className="viz-creative-image" href={preview?.imageUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir imagen de ${label}`}><img src={url} alt={`Miniatura de ${label}`} loading="lazy" onError={() => setUrl(current => current === preview?.thumbnailUrl && preview.imageUrl !== current ? preview.imageUrl : '')} /></a>;
 }
 
 function DemographicChart({ campaign, unit }: { campaign: CampaignMetrics; unit: string }) {

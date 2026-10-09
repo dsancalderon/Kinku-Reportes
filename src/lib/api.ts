@@ -10,8 +10,8 @@ export async function getOverview(project: ProjectId, month?: string, signal?: A
   return response.json() as Promise<Overview>;
 }
 
-export async function getCreativePreviews(project: ProjectId, month: string): Promise<Record<string, { imageUrl: string; thumbnailUrl: string | null }>> {
-  const response = await fetch(`/api/creative-previews?project=${project}&month=${encodeURIComponent(month)}`);
+export async function getCreativePreviews(project: ProjectId, month: string, signal?: AbortSignal): Promise<Record<string, { imageUrl: string; thumbnailUrl: string | null }>> {
+  const response = await fetch(`/api/creative-previews?project=${project}&month=${encodeURIComponent(month)}`, { signal });
   if (!response.ok) throw new Error('No se pudieron consultar los previews de Meta.');
   const data = await response.json() as { previews: Record<string, { imageUrl: string; thumbnailUrl: string | null }> };
   return data.previews;

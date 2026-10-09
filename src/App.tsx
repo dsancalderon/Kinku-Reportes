@@ -6,7 +6,6 @@ import { money, number } from './lib/historical';
 import { SyncStatus } from './components/SyncStatus';
 import { Consolidated } from './components/Consolidated';
 import { AuroraBackground } from './components/AuroraBackground';
-import { MetaDetails } from './components/MetaDetails';
 import { HubspotReport } from './components/HubspotReport';
 import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
@@ -306,9 +305,7 @@ export function App() {
 
               <CampaignTable report={report} />
 
-              <BreakdownVisuals campaigns={overview.campaigns} />
-
-              <MetaDetails key={`${projectId}-${selectedMonth}`} campaigns={overview.campaigns} month={selectedMonth} projectId={projectId} />
+              <BreakdownVisuals campaigns={overview.campaigns} month={selectedMonth} projectId={projectId} />
 
               <Executive
                 note={view === 'summary' && projectId === 'pekin' ? `${report.note} ${pekinGoogleSummary(overview)}` : report.note}
