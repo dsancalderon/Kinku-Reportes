@@ -1,4 +1,5 @@
 import type { CampaignMetrics, MetaBreakdown } from '../../shared/contracts';
+import type { ProjectId } from '../../shared/projects';
 import { money, number } from '../lib/historical';
 
 function unit(campaign: CampaignMetrics): string {
@@ -19,8 +20,9 @@ function campaignResult(campaign: CampaignMetrics): number | null {
   return campaign.platformConversions;
 }
 
-export function MetaDetails({ campaigns, month }: { campaigns: CampaignMetrics[]; month: string }) {
+export function MetaDetails({ campaigns, month, projectId }: { campaigns: CampaignMetrics[]; month: string; projectId: ProjectId }) {
   const meta = campaigns.filter(campaign => campaign.provider === 'meta');
+  const recognition = projectId === 'pekin' ? meta.filter(campaign => campaign.lineName === 'RECONOCIMIENTO' && ((campaign.impressions || 0) > 0 || (campaign.spend || 0) > 0 || (campaign.engagement || 0) > 0)) : [];
   const platforms = meta.flatMap(campaign => (campaign.platformBreakdown || []).map(item => ({ campaign, item })));
   const demographics = meta.flatMap(campaign => (campaign.demographics || []).map(item => ({ campaign, item })));
   const creatives = meta.flatMap(campaign => (campaign.creatives || []).map(item => ({ campaign, item })));
@@ -28,6 +30,17 @@ export function MetaDetails({ campaigns, month }: { campaigns: CampaignMetrics[]
 
   return <section className="meta-details" aria-label="Detalle de Meta Ads">
     <div className="dashboard-heading"><div><p className="eyebrow">META ADS / DATOS DE LA API</p><h2>Alcance, audiencias y creativos</h2></div></div>
+    {recognition.length > 0 && <section className="panel table-panel recognition-panel" aria-label="Reconocimiento de Pekín">
+      <div className="panel-heading"><h3>Reconocimiento · impresiones e interacciones</h3><span className="mini-tag">PEKÍN</span></div>
+      <div className="recognition-totals">
+        <div><span>IMPRESIONES</span><strong>{number(recognition.reduce((sum, campaign) => sum + (campaign.impressions || 0), 0))}</strong></div>
+        <div><span>INTERACCIONES</span><strong>{number(recognition.reduce((sum, campaign) => sum + (campaign.engagement || 0), 0))}</strong></div>
+      </div>
+      <div className="table-scroll"><table><thead><tr><th>Campaña de reconocimiento</th><th>Impresiones</th><th>Interacciones</th><th>Reacciones</th><th>Guardados</th><th>Reproducciones</th><th>Inversión</th></tr></thead><tbody>
+        {recognition.map(campaign => <tr key={campaign.campaignId}><td>{campaign.campaignName}</td><td>{number(campaign.impressions)}</td><td>{number(campaign.engagement)}</td><td>{number(campaign.reactions)}</td><td>{number(campaign.saves)}</td><td>{number(campaign.videoViews)}</td><td>{money(campaign.spend)}</td></tr>)}
+      </tbody></table></div>
+      <p className="table-note">Las interacciones describen actividad de las mismas campañas de reconocimiento. Son una métrica distinta y no se suman a las impresiones.</p>
+    </section>}
     <section className="panel table-panel">
       <div className="panel-heading"><h3>Campañas · resultados, alcance y eficiencia</h3><span className="mini-tag">{month}</span></div>
       <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Línea</th><th>Resultado</th><th>Inversión</th><th>Costo / resultado</th><th>Impresiones</th><th>Alcance</th><th>Frecuencia</th><th>Clics</th><th>CTR</th></tr></thead>
@@ -51,7 +64,7 @@ export function MetaDetails({ campaigns, month }: { campaigns: CampaignMetrics[]
       <p className="table-note">Cada fila corresponde a una campaña y plataforma. El alcance no representa personas únicas entre filas.</p>
     </section>
 
-    {meta.some(campaign => campaign.reactions != null || campaign.saves != null || campaign.videoViews != null) &&
+    {projectId !== 'pekin' && meta.some(campaign => campaign.reactions != null || campaign.saves != null || campaign.videoViews != null) &&
       <section className="panel table-panel"><div className="panel-heading"><h3>Detalle de interacción</h3><span className="mini-tag">DESGLOSE · NO SUMAR</span></div>
         <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Interacciones</th><th>Reacciones</th><th>Guardados</th><th>Reproducciones</th></tr></thead><tbody>
           {meta.filter(campaign => campaign.engagement !== null && campaign.engagement !== undefined).map(campaign => <tr key={campaign.campaignId}><td>{campaign.campaignName}</td><td>{number(campaign.engagement)}</td><td>{number(campaign.reactions)}</td><td>{number(campaign.saves)}</td><td>{number(campaign.videoViews)}</td></tr>)}

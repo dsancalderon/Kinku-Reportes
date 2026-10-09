@@ -228,6 +228,11 @@ main{padding-top:28px}
 .viz-ranked-row>div:first-child{display:flex;justify-content:space-between;gap:12px;margin-bottom:7px;font-size:12px}
 .viz-ranked-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e4f0e9}
 .viz-ranked-row strong{color:var(--lime-soft);font-variant-numeric:tabular-nums}
+.recognition-panel{margin-bottom:18px}
+.recognition-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px}
+.recognition-totals>div{padding:15px 18px;border:1px solid var(--glass-border);border-radius:14px;background:#0d2b27a6}
+.recognition-totals span{display:block;color:var(--muted);font-size:10px;letter-spacing:1px}
+.recognition-totals strong{display:block;margin-top:5px;color:var(--lime-soft);font-size:25px;font-variant-numeric:tabular-nums}
 @media(max-width:1320px){.consolidated-heading{align-items:stretch;flex-direction:column}
 .consolidated-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
@@ -246,6 +251,7 @@ main{padding-top:28px}
 .source-notice p{flex-basis:100%;margin:0}
 }
 @media(max-width:760px){:root{--gutter:12px}
+.recognition-totals strong{font-size:20px}
 .viz-grid{grid-template-columns:1fr;gap:12px}
 .viz-bar-label{flex-direction:column;gap:2px}
 .viz-bar-label span{text-align:left}

@@ -302,7 +302,7 @@ export function App() {
 
               <BreakdownVisuals campaigns={overview.campaigns} />
 
-              <MetaDetails campaigns={overview.campaigns} month={selectedMonth} />
+              <MetaDetails campaigns={overview.campaigns} month={selectedMonth} projectId={projectId} />
 
               <Executive
                 note={view === 'summary' && projectId === 'pekin' ? `${report.note} ${pekinGoogleSummary(overview)}` : report.note}
