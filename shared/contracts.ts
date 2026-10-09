@@ -37,11 +37,41 @@ export interface CampaignMetrics {
   currency: string;
   spend: number | null;
   impressions: number | null;
+  reach?: number | null;
+  frequency?: number | null;
   clicks: number | null;
   platformConversions: number | null;
   engagement?: number | null;
+  reactions?: number | null;
+  saves?: number | null;
+  videoViews?: number | null;
+  platformBreakdown?: MetaBreakdown[];
+  demographics?: MetaBreakdown[];
+  daily?: MetaDailyPoint[];
+  creatives?: MetaCreative[];
   conversionDefinition: string;
   fetchedAt: string;
+}
+
+export interface MetaBreakdown {
+  label: string;
+  spend: number;
+  impressions: number;
+  reach: number;
+  leads: number;
+  engagement: number;
+}
+
+export interface MetaDailyPoint {
+  date: string;
+  spend: number;
+  impressions: number;
+  leads: number;
+  engagement: number;
+}
+
+export interface MetaCreative extends MetaBreakdown {
+  id: string;
 }
 
 export interface ReportRowItem {
@@ -50,6 +80,7 @@ export interface ReportRowItem {
   target: number | null;
   spend: number | null;
   budget: number | null;
+  targetCostPerResult?: number | null;
   unit: string;
   costPerResult: number | null;
 }

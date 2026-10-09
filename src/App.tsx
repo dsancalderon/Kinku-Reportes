@@ -6,6 +6,7 @@ import { money, number } from './lib/historical';
 import { SyncStatus } from './components/SyncStatus';
 import { Consolidated } from './components/Consolidated';
 import { AuroraBackground } from './components/AuroraBackground';
+import { MetaDetails } from './components/MetaDetails';
 
 type View = 'summary' | Provider | 'connections';
 
@@ -130,6 +131,7 @@ export function App() {
           {!showConsolidated && <SyncStatus
             key={`${projectId}-${mode}`}
             projectId={projectId}
+            month={selectedMonth}
             sync={overview?.projectId === projectId ? overview.sync : undefined}
             onUpdated={() => setRefreshRevision(value => value + 1)}
           />}
@@ -151,7 +153,7 @@ export function App() {
           </section>
 
           <nav className="view-nav" aria-label="Secciones del proyecto">
-            {(['summary', ...project.providers, 'connections'] as View[]).map(item => (
+            {(['summary', ...project.providers.filter(item => mode === 'historical' || item !== 'google_ads'), 'connections'] as View[]).map(item => (
               <button
                 key={item}
                 onClick={() => setView(item)}
@@ -177,7 +179,7 @@ export function App() {
               <p>
                 {mode === 'historical'
                   ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) con Meta Ads, Google Ads y metas registradas.'
-                  : 'Métricas de Meta Ads y Google Ads acumuladas desde el 01 de octubre hasta hoy. Las metas de octubre siguen sin definir.'}
+                  : 'Métricas de Meta Ads acumuladas desde el 01 de octubre hasta el último corte de la API, comparadas con las metas del Flow de octubre. Google Ads no tiene metas ni anuncios previstos para este mes.'}
               </p>
             </div>
           )}
@@ -295,23 +297,23 @@ export function App() {
 
               <CampaignTable report={report} />
 
-              {mode === 'live' && <MetaCampaignTable campaigns={overview.campaigns.filter(campaign => campaign.provider === 'meta')} />}
+              <MetaDetails campaigns={overview.campaigns} month={selectedMonth} />
 
               <Executive
                 note={view === 'summary' && projectId === 'pekin' ? `${report.note} ${pekinGoogleSummary(overview)}` : report.note}
                 source={
                   view === 'summary' && projectId === 'pekin'
-                    ? 'Fuentes: Meta Ads Graph API, Google Ads API y metas del mes cuando están definidas'
+                    ? 'Fuentes: Meta Ads Graph API, Google Ads API si registra actividad y Flow del mes'
                     : mode === 'historical'
                     ? 'Fuente: Meta Ads Graph API + Flow de Metas Septiembre 2026'
-                    : 'Fuente: Meta Ads Graph API en vivo · Período acumulado 01 al día actual'
+                    : 'Fuente: Meta Ads Graph API · Acumulado desde el 01 de octubre hasta el último corte sincronizado · Metas: Flow octubre 2026'
                 }
               />
 
               {view === 'summary' && (
                 <div className="channel-links">
                   {project.providers
-                    .filter(item => item !== 'meta')
+                    .filter(item => item !== 'meta' && (mode === 'historical' || item !== 'google_ads'))
                     .map(item => (
                       <button key={item} onClick={() => setView(item)}>
                         <span>
@@ -362,21 +364,11 @@ function PekinChannelSummary({ overview }: { overview: Overview }) {
     .reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
   const conversions = google.reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
   const investment = [...meta, ...google].reduce((sum, campaign) => sum + (campaign.spend || 0), 0);
+  const leadTarget = overview.targets.filter(target => target.channel === 'meta' && target.targetUnit === 'leads').reduce((sum, target) => sum + target.targetKpi, 0);
   return <section className="pekin-channel-summary" aria-label="Resumen de Meta y Google Ads de Pekín">
     <div><span>LEADS META</span><strong>{number(leads)}</strong><small>Captación en campañas Meta</small></div>
-    <div><span>CONVERSIONES GOOGLE ADS</span><strong>{google.length ? number(conversions) : '—'}</strong><small>{google.length ? 'Acciones registradas en Google Ads' : 'Sin actividad en el período'}</small></div>
-    <div><span>INVERSIÓN META + GOOGLE</span><strong>{money(investment)}</strong><small>Gasto publicitario total del mes</small></div>
-  </section>;
-}
-
-function MetaCampaignTable({ campaigns }: { campaigns: CampaignMetrics[] }) {
-  return <section className="panel table-panel">
-    <div className="panel-heading"><h3>Campañas activas en Meta · octubre</h3><span className="mini-tag">ESTADO EFECTIVO ACTIVO</span></div>
-    <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Línea</th><th>Resultado</th><th>Inversión</th><th>Impresiones</th></tr></thead>
-      <tbody>{campaigns.length ? [...campaigns].sort((a, b) => (b.spend || 0) - (a.spend || 0)).map(campaign => <tr key={campaign.campaignId}>
-        <td>{campaign.campaignName}</td><td>{campaign.lineName}</td><td>{number(campaign.lineName === 'RECONOCIMIENTO' ? campaign.impressions : campaign.lineName === 'INTERACCIÓN' ? campaign.engagement : campaign.platformConversions)}</td><td>{money(campaign.spend)}</td><td>{number(campaign.impressions)}</td>
-      </tr>) : <tr><td colSpan={5}>Sin campañas activas verificadas en la última sincronización.</td></tr>}</tbody>
-    </table></div>
+    <div><span>{google.length ? 'CONVERSIONES GOOGLE ADS' : 'META LEADS META'}</span><strong>{google.length ? number(conversions) : number(leadTarget)}</strong><small>{google.length ? 'Acciones registradas en Google Ads' : 'Flow del período'}</small></div>
+    <div><span>{google.length ? 'INVERSIÓN META + GOOGLE' : 'INVERSIÓN META'}</span><strong>{money(investment)}</strong><small>Gasto publicitario total del mes</small></div>
   </section>;
 }
 
@@ -559,14 +551,16 @@ function CampaignTable({ report }: { report: ReportView }) {
               <th>Línea</th>
               <th>Resultado</th>
               <th>Meta</th>
+              <th>Presupuesto</th>
               <th>Inversión</th>
-              <th>Costo / resultado</th>
+              <th>Costo objetivo</th>
+              <th>Costo real</th>
             </tr>
           </thead>
           <tbody>
             {report.rows.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', color: '#889582', padding: '24px 0' }}>
+                <td colSpan={7} style={{ textAlign: 'center', color: '#889582', padding: '24px 0' }}>
                   Sin líneas publicitarias registradas en este período.
                 </td>
               </tr>
@@ -582,7 +576,9 @@ function CampaignTable({ report }: { report: ReportView }) {
                     {row.result != null && <small>{row.unit}</small>}
                   </td>
                   <td>{row.target != null ? number(row.target) : '—'}</td>
+                  <td>{money(row.budget)}</td>
                   <td>{money(row.spend)}</td>
+                  <td>{money(row.targetCostPerResult)}</td>
                   <td>{money(row.costPerResult)}</td>
                 </tr>
               ))
@@ -591,7 +587,7 @@ function CampaignTable({ report }: { report: ReportView }) {
         </table>
       </div>
       <p className="table-note">
-        Datos extraídos directamente de las fuentes oficiales (Meta Graph API). Solo se listan líneas con métricas verificadas.
+        Metas y presupuestos del Flow del mes; resultados del último corte de Meta Graph API. «—» indica que aún no hay métrica sincronizada para esa línea.
       </p>
     </section>
   );
@@ -808,7 +804,7 @@ function HubspotReport({ projectName, onNavigate }: { projectName: string; onNav
       <div className="provider-icon">H</div>
       <h2>HubSpot · {projectName}</h2>
       <p>
-        El acceso a la cuenta comercial de HubSpot se encuentra pendiente. Tan pronto se conceda el acceso, aquí se reflejará el embudo de contactos y oportunidades en tiempo real.
+        El informe anterior incluía ciclo de vida, estado del contacto, leads calientes y citas. Los datos de octubre de {projectName} están pendientes de recibir por chat; se mostrarán aquí con su fecha de corte cuando estén disponibles.
       </p>
       <button className="primary" onClick={onNavigate}>
         Ver conexiones ↗

@@ -11,6 +11,8 @@ export interface ConsolidatedRow {
   unit: string;
   result: number | null;
   spend: number | null;
+  budget?: number | null;
+  targetCostPerResult?: number | null;
   target: number | null;
   targetUnit?: string;
   targetNote?: string;
@@ -37,6 +39,8 @@ export function buildConsolidated(overviews: Overview[]) {
           unit: row.unit,
           result: row.result,
           spend: row.spend,
+          budget: row.budget,
+          targetCostPerResult: row.targetCostPerResult,
           target: row.target,
         });
       }
@@ -72,6 +76,9 @@ export function buildConsolidated(overviews: Overview[]) {
     .reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
   const googleConversions = campaigns.filter(campaign => campaign.provider === 'google_ads')
     .reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
+  const metaLeadTarget = overviews.flatMap(overview => overview.targets)
+    .filter(target => target.channel === 'meta' && target.targetUnit === 'leads')
+    .reduce((sum, target) => sum + target.targetKpi, 0);
   const spend = campaigns.reduce((sum, campaign) => sum + (campaign.spend || 0), 0);
-  return { rows, metaLeads, googleConversions, spend };
+  return { rows, metaLeads, metaLeadTarget, googleConversions, spend };
 }

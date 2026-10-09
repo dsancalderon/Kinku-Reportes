@@ -11,6 +11,9 @@ import type { ProjectId } from '../shared/projects.js';
 import { getSupabase } from './db/supabase.js';
 import { classifyCampaignLine, getObjectiveForLine } from './integrations/meta.js';
 import { checkGoogleAdsStatus } from './integrations/google.js';
+import octoberTargets from '../data/flows/octubre-2026.json';
+
+const configuredOctoberTargets = octoberTargets as MonthlyTarget[];
 
 const money = (val: number | null) =>
   val === null || val === undefined || isNaN(val)
@@ -28,6 +31,9 @@ export async function getOverviewData(
 ): Promise<Overview> {
   const baseConnections = getConnections(projectId);
   const supabase = getSupabase();
+  const configuredTargets = selectedMonth === '2026-10'
+    ? configuredOctoberTargets.filter(target => target.projectId === projectId)
+    : [];
 
   if (!supabase) {
     return {
@@ -37,7 +43,7 @@ export async function getOverviewData(
       reportingTimezone: 'America/Bogota',
       connections: baseConnections,
       campaigns: [],
-      targets: [],
+      targets: configuredTargets,
       reports: {},
       sync: { intervalDays: 7, nextScheduledAt: null, lastSuccessfulAt: null },
     };
@@ -58,7 +64,7 @@ export async function getOverviewData(
       .eq('project_id', projectId)
       .eq('month', selectedMonth);
 
-    const targets: MonthlyTarget[] = (dbTargets || []).map(t => ({
+    const databaseTargets: MonthlyTarget[] = (dbTargets || []).map(t => ({
       id: t.id,
       projectId: t.project_id as ProjectId,
       month: t.month,
@@ -70,11 +76,19 @@ export async function getOverviewData(
       budgetSpend: Number(t.budget_spend),
       targetCostPerResult: Number(t.target_cost_per_result),
     }));
+    const targets = [
+      ...databaseTargets,
+      ...configuredTargets.filter(configured => !databaseTargets.some(target =>
+        target.channel === configured.channel && target.lineName === configured.lineName && target.objective === configured.objective
+      )),
+    ];
     const lineForCampaign = (camp: { name: string; objective?: string | null }) => {
-      if (/AWAREN(N)?ES|AWARENESS/i.test(camp.name) && targets.some(target => target.channel === 'meta' && target.objective === 'awareness' && target.lineName === 'RECONOCIMIENTO')) {
+      if (selectedMonth === '2026-09' && /AWAREN(N)?ES|AWARENESS/i.test(camp.name) && targets.some(target => target.channel === 'meta' && target.objective === 'awareness' && target.lineName === 'RECONOCIMIENTO')) {
         return 'RECONOCIMIENTO';
       }
-      return classifyCampaignLine(camp.name, camp.objective || undefined);
+      const classified = classifyCampaignLine(camp.name, camp.objective || undefined);
+      if (classified.startsWith('APARTAESTUDIOS ') && targets.some(target => target.lineName === 'APARTAESTUDIOS')) return 'APARTAESTUDIOS';
+      return classified;
     };
 
     // 3. Consultar campañas y métricas extraídas para este mes
@@ -83,7 +97,7 @@ export async function getOverviewData(
       .select(`
         id, external_id, name, status, objective, provider,
         campaign_metrics (
-          month, date, spend, impressions, clicks, leads, conversions, raw_data, provider
+          month, date, spend, impressions, reach, clicks, leads, conversions, raw_data, provider
         )
       `)
       .eq('project_id', projectId);
@@ -93,9 +107,16 @@ export async function getOverviewData(
         ? camp.campaign_metrics.find(m => m.month === selectedMonth)
         : null;
 
-      if (!metric || (camp.provider === 'meta' && selectedMonth === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date()) && camp.status !== 'ACTIVE')) {
+      if (!metric) {
         return [];
       }
+
+      const action = (type: string): number | null => {
+        const actions = metric.raw_data?.actions;
+        if (!Array.isArray(actions)) return null;
+        const found = actions.find(item => item.action_type === type);
+        return found ? Number(found.value) : 0;
+      };
 
       return [{
         projectId,
@@ -112,9 +133,18 @@ export async function getOverviewData(
         currency: 'COP',
         spend: metric.spend ?? null,
         impressions: metric.impressions ?? null,
+        reach: metric.reach ?? null,
+        frequency: metric.raw_data?.frequency ?? (metric.reach ? Number(metric.impressions || 0) / Number(metric.reach) : null),
         clicks: metric.clicks ?? null,
         platformConversions: camp.provider === 'google_ads' ? (metric.raw_data?.conversions ?? metric.conversions ?? null) : (metric.leads ?? null),
         engagement: camp.provider === 'meta' ? (metric.raw_data?.engagement ?? null) : null,
+        reactions: camp.provider === 'meta' ? action('post_reaction') : null,
+        saves: camp.provider === 'meta' ? action('onsite_conversion.post_save') : null,
+        videoViews: camp.provider === 'meta' ? action('video_view') : null,
+        platformBreakdown: camp.provider === 'meta' ? (metric.raw_data?.platformBreakdown ?? []) : [],
+        demographics: camp.provider === 'meta' ? (metric.raw_data?.demographics ?? []) : [],
+        daily: camp.provider === 'meta' ? (metric.raw_data?.daily ?? []) : [],
+        creatives: camp.provider === 'meta' ? (metric.raw_data?.creatives ?? []) : [],
         conversionDefinition: camp.provider === 'google_ads' ? 'Conversiones' : 'Leads',
         fetchedAt: schedule?.last_successful_at || new Date().toISOString(),
       }];
@@ -128,7 +158,6 @@ export async function getOverviewData(
 
     (dbCampaigns || []).forEach(camp => {
       if (camp.provider !== 'meta') return;
-      if (selectedMonth === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date()) && camp.status !== 'ACTIVE') return;
       const m = Array.isArray(camp.campaign_metrics)
         ? camp.campaign_metrics.find(item => item.month === selectedMonth)
         : null;
@@ -199,6 +228,7 @@ export async function getOverviewData(
             target: t.targetKpi,
             spend: spendValue,
             budget: t.budgetSpend,
+            targetCostPerResult: t.targetCostPerResult,
             unit: t.targetUnit,
             costPerResult: (spendValue && resValue && resValue > 0) ? spendValue / resValue : null,
           });

@@ -4,9 +4,15 @@ import type { ProjectId } from '../../shared/projects.js';
 interface MetaInsightItem {
   campaign_id: string;
   campaign_name: string;
+  ad_id?: string;
+  ad_name?: string;
+  publisher_platform?: string;
+  age?: string;
+  gender?: string;
   spend?: string;
   impressions?: string;
   reach?: string;
+  frequency?: string;
   clicks?: string;
   actions?: { action_type: string; value: string }[];
   date_start?: string;
@@ -15,6 +21,26 @@ interface MetaInsightItem {
 
 interface MetaCampaignItem { id: string; name: string; objective?: string; status?: string; effective_status?: string }
 const META_API_VERSION = process.env.META_API_VERSION || 'v26.0';
+
+function actionValue(item: MetaInsightItem | undefined, types: string[]): number {
+  return Number(item?.actions?.find(action => types.includes(action.action_type))?.value || 0);
+}
+
+function insightDetails(item: MetaInsightItem) {
+  return {
+    spend: Number(item.spend || 0),
+    impressions: Number(item.impressions || 0),
+    reach: Number(item.reach || 0),
+    leads: actionValue(item, ['lead']),
+    engagement: actionValue(item, ['post_engagement', 'page_engagement']),
+  };
+}
+
+function groupByCampaign(items: MetaInsightItem[]): Map<string, MetaInsightItem[]> {
+  const grouped = new Map<string, MetaInsightItem[]>();
+  items.forEach(item => grouped.set(item.campaign_id, [...(grouped.get(item.campaign_id) || []), item]));
+  return grouped;
+}
 
 export async function fetchMetaPages<T>(url: string): Promise<T[]> {
   const items: T[] = [];
@@ -52,14 +78,16 @@ export function matchesProject(campaignName: string, projectId: ProjectId): bool
 
 export function classifyCampaignLine(name: string, objective?: string): string {
   const upper = name.toUpperCase();
+  if (upper.includes('APARTAESTUDIO') && upper.includes('INVERSIONISTA')) return 'APARTAESTUDIOS INVERSIONISTA';
+  if (upper.includes('APARTAESTUDIO') && upper.includes('VIVIENDA')) return 'APARTAESTUDIOS VIVIENDA';
   if (upper.includes('APARTAESTUDIO')) return 'APARTAESTUDIOS';
   if (upper.includes('2 HABITACION') || upper.includes('VIVIENDA FAMILIAR')) return 'APARTAMENTOS 2 HABITACIONES';
+  if (upper.includes('ARRENDATARIO')) return 'ARRENDATARIOS';
+  if (upper.includes('PROPIETARIO')) return 'PROPIETARIOS';
   if (upper.includes('INTERACCION') || upper.includes('INTERACCIÓN') || upper.includes('POST PROMOTED')) return 'INTERACCIÓN';
   if (upper.includes('AWARENESS') || upper.includes('AWARENNES') || upper.includes('RECONOCIMIENTO')) return 'RECONOCIMIENTO';
   if (upper.includes('INVERSION') || upper.includes('INVERSIÓN')) return 'INVERSIÓN';
   if (upper.includes('VIVIENDA')) return 'VIVIENDA';
-  if (upper.includes('ARRENDATARIO')) return 'ARRENDATARIOS';
-  if (upper.includes('PROPIETARIO')) return 'PROPIETARIOS';
   if (objective === 'OUTCOME_AWARENESS') return 'RECONOCIMIENTO';
   if (objective === 'OUTCOME_ENGAGEMENT') return 'INTERACCIÓN';
   return 'GENERAL';
@@ -125,13 +153,34 @@ export async function syncMetaForProject(
   for (const m of months) {
     const { since, until } = getMonthDateRanges(m);
     const timeRangeParam = encodeURIComponent(JSON.stringify({ since, until }));
-    const insightsUrl = `https://graph.facebook.com/${META_API_VERSION}/${accountId}/insights?time_range=${timeRangeParam}&level=campaign&fields=campaign_id,campaign_name,spend,impressions,reach,clicks,actions&limit=100&access_token=${encodeURIComponent(token)}`;
+    const insightsUrl = `https://graph.facebook.com/${META_API_VERSION}/${accountId}/insights?time_range=${timeRangeParam}&level=campaign&fields=campaign_id,campaign_name,spend,impressions,reach,frequency,clicks,actions&limit=100&access_token=${encodeURIComponent(token)}`;
     const monthInsights = (await fetchMetaPages<MetaInsightItem>(insightsUrl))
       .filter(item => matchesProject(item.campaign_name, projectId));
+    const supplementalUrl = (fields: string, options: string) =>
+      `https://graph.facebook.com/${META_API_VERSION}/${accountId}/insights?time_range=${timeRangeParam}&level=${options === 'level=ad' ? 'ad' : 'campaign'}&fields=${fields}&limit=100&${options === 'level=ad' ? '' : `${options}&`}access_token=${encodeURIComponent(token)}`;
+    const optional = async (url: string): Promise<MetaInsightItem[]> => {
+      try {
+        return (await fetchMetaPages<MetaInsightItem>(url))
+          .filter(item => matchesProject(item.campaign_name, projectId));
+      } catch (error) {
+        console.warn('Desglose opcional de Meta no disponible:', error instanceof Error ? error.message : error);
+        return [];
+      }
+    };
+    const [platformRows, demographicRows, dailyRows, adRows] = await Promise.all([
+      optional(supplementalUrl('campaign_id,campaign_name,spend,impressions,reach,actions', 'breakdowns=publisher_platform')),
+      optional(supplementalUrl('campaign_id,campaign_name,spend,impressions,reach,actions', 'breakdowns=age,gender')),
+      optional(supplementalUrl('campaign_id,campaign_name,spend,impressions,reach,actions', 'time_increment=1')),
+      optional(supplementalUrl('campaign_id,campaign_name,ad_id,ad_name,spend,impressions,reach,actions', 'level=ad')),
+    ]);
+    const platformsByCampaign = groupByCampaign(platformRows);
+    const demographicsByCampaign = groupByCampaign(demographicRows);
+    const dailyByCampaign = groupByCampaign(dailyRows);
+    const adsByCampaign = groupByCampaign(adRows);
     const insightsById = new Map(monthInsights.map(item => [item.campaign_id, item]));
     const isCurrentMonth = m === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(new Date());
     const visible: MetaCampaignItem[] = isCurrentMonth
-      ? accountCampaigns.filter(campaign => campaign.effective_status === 'ACTIVE')
+      ? accountCampaigns.filter(campaign => campaign.effective_status === 'ACTIVE' || insightsById.has(campaign.id))
       : [
           ...accountCampaigns.filter(campaign => insightsById.has(campaign.id)),
           ...monthInsights.filter(item => !accountCampaigns.some(campaign => campaign.id === item.campaign_id))
@@ -161,17 +210,12 @@ export async function syncMetaForProject(
 
       if (campaignError || !dbCamp) throw new Error(`No se pudo guardar la campaña Meta ${campaign.name}: ${campaignError?.message || 'sin ID'}`);
 
-      const leadsAction = (item?.actions || []).find(a => a.action_type === 'lead');
-      const engagementAction = (item?.actions || []).find(a =>
-        a.action_type === 'post_engagement' || a.action_type === 'page_engagement'
-      );
-
       const spend = Number(item?.spend || 0);
       const impressions = Number(item?.impressions || 0);
       const reach = Number(item?.reach || 0);
       const clicks = Number(item?.clicks || 0);
-      const leads = Number(leadsAction?.value || 0);
-      const engagement = Number(engagementAction?.value || 0);
+      const leads = actionValue(item, ['lead']);
+      const engagement = actionValue(item, ['post_engagement', 'page_engagement']);
 
       const { error: metricError } = await supabase.from('campaign_metrics').insert({
         campaign_id: dbCamp.id,
@@ -188,6 +232,21 @@ export async function syncMetaForProject(
         raw_data: {
           ...(item || {}),
           engagement,
+          frequency: item?.frequency ? Number(item.frequency) : null,
+          platformBreakdown: (platformsByCampaign.get(campaign.id) || []).map(row => ({
+            label: row.publisher_platform || 'Otra plataforma', ...insightDetails(row),
+          })),
+          demographics: (demographicsByCampaign.get(campaign.id) || []).map(row => ({
+            label: `${row.age || 'Edad sin clasificar'} · ${row.gender || 'Sin clasificar'}`, ...insightDetails(row),
+          })),
+          daily: (dailyByCampaign.get(campaign.id) || []).map(row => ({
+            date: row.date_start || '', spend: Number(row.spend || 0),
+            impressions: Number(row.impressions || 0), leads: actionValue(row, ['lead']),
+            engagement: actionValue(row, ['post_engagement', 'page_engagement']),
+          })),
+          creatives: (adsByCampaign.get(campaign.id) || []).map(row => ({
+            id: row.ad_id || '', label: row.ad_name || 'Anuncio sin nombre', ...insightDetails(row),
+          })),
           effectiveStatus: campaign.effective_status,
           lineName: classifyCampaignLine(campaign.name, campaign.objective),
         },

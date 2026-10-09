@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Overview } from '../../shared/contracts';
 import type { ProjectId } from '../../shared/projects';
 
-export function SyncStatus({ sync, projectId, onUpdated }: { sync: Overview['sync'] | undefined; projectId: ProjectId; onUpdated?: () => void }) {
+export function SyncStatus({ sync, projectId, month, onUpdated }: { sync: Overview['sync'] | undefined; projectId: ProjectId; month: string; onUpdated?: () => void }) {
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -16,7 +16,7 @@ export function SyncStatus({ sync, projectId, onUpdated }: { sync: Overview['syn
     setBusy(true);
     setMessage('');
     try {
-      const response = await fetch(`/api/sync?project=${projectId}`, { method: 'POST' });
+      const response = await fetch(`/api/sync?project=${projectId}&month=${month}`, { method: 'POST' });
       const result = await response.json() as { error?: string; message?: string };
       setMessage(response.ok ? result.message ?? 'Solicitud recibida. Esperando confirmación de sincronización.' : result.error ?? 'No se pudo actualizar.');
       if (response.ok) onUpdated?.();

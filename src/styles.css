@@ -122,6 +122,12 @@ td small{font-size:10px;color:var(--muted)}
 .campaign-table{margin-top:18px}
 .table-dot{width:7px;height:7px;background:var(--project);display:inline-block;border-radius:50%;margin-right:9px;box-shadow:0 0 8px var(--project)}
 .table-note{font-size:10px;color:var(--dim);margin:14px 4px 0}
+.campaign-status{display:block;color:var(--muted);font-size:10px;margin-top:4px;white-space:nowrap}
+.meta-details{margin:20px 0}
+.meta-expand{margin:16px 0;padding:18px 24px}
+.meta-expand summary{cursor:pointer;font-size:14px;font-weight:700;list-style-position:inside}
+.meta-expand summary span{float:right;color:var(--muted);font-size:11px;font-weight:400}
+.meta-expand .table-scroll{margin-top:18px}
 
 .executive{display:flex;gap:18px;padding:24px 26px;background:linear-gradient(115deg,#25421cb3,#0b1f1dcc);border:1px solid #b8e04a4d;border-radius:20px;box-shadow:var(--glass-shadow);margin:18px 0}
 .executive-icon{font-size:26px;color:var(--lime);text-shadow:0 0 14px #a6dc3a80}

@@ -16,10 +16,16 @@ export default async function syncHandler(req: IncomingMessage, res: ServerRespo
 
   const url = new URL(req.url ?? '/', 'http://localhost');
   const projectId = ((req as any).query?.project || url.searchParams.get('project')) as ProjectId;
+  const month = ((req as any).query?.month || url.searchParams.get('month') || '2026-10') as string;
 
   if (!isProjectId(projectId)) {
     res.writeHead(400);
     res.end(JSON.stringify({ error: 'Selecciona un proyecto válido: pekin, metriku o skala.' }));
+    return;
+  }
+  if (!['2026-09', '2026-10'].includes(month)) {
+    res.writeHead(400);
+    res.end(JSON.stringify({ error: 'Selecciona un período válido: 2026-09 o 2026-10.' }));
     return;
   }
 
@@ -35,9 +41,9 @@ export default async function syncHandler(req: IncomingMessage, res: ServerRespo
   }
 
   try {
-    const metaResult = await syncMetaForProject(projectId);
+    const metaResult = await syncMetaForProject(projectId, [month]);
     let googleResult = null;
-    if (projectId === 'pekin') {
+    if (projectId === 'pekin' && month === '2026-09') {
       try {
         googleResult = await syncGoogleAdsForProject(projectId);
       } catch (gErr: any) {
