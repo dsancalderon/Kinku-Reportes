@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import type { CampaignMetrics, MetaBreakdown } from '../../shared/contracts';
 import type { ProjectId } from '../../shared/projects';
 import { money, number } from '../lib/historical';
+import { getCreativePreviews } from '../lib/api';
 
 function unit(campaign: CampaignMetrics): string {
   if (campaign.lineName === 'RECONOCIMIENTO') return 'impresiones';
@@ -21,6 +23,7 @@ function campaignResult(campaign: CampaignMetrics): number | null {
 }
 
 export function MetaDetails({ campaigns, month, projectId }: { campaigns: CampaignMetrics[]; month: string; projectId: ProjectId }) {
+  const [previewState, setPreviewState] = useState<{ status: 'idle' | 'loading' | 'loaded' | 'error'; images: Record<string, { imageUrl: string; thumbnailUrl: string | null }> }>({ status: 'idle', images: {} });
   const meta = campaigns.filter(campaign => campaign.provider === 'meta');
   const recognition = projectId === 'pekin' ? meta.filter(campaign => campaign.lineName === 'RECONOCIMIENTO' && ((campaign.impressions || 0) > 0 || (campaign.spend || 0) > 0 || (campaign.engagement || 0) > 0)) : [];
   const platforms = meta.flatMap(campaign => (campaign.platformBreakdown || []).map(item => ({ campaign, item })));
@@ -75,15 +78,29 @@ export function MetaDetails({ campaigns, month, projectId }: { campaigns: Campai
       <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Segmento</th><th>Resultado</th><th>Impresiones</th><th>Alcance</th></tr></thead><tbody>{demographics.length ? demographics.map(({ campaign, item }) => <tr key={`${campaign.campaignId}:${item.label}`}><td>{campaign.campaignName}</td><td>{item.label}</td><td>{number(result(campaign, item))} <small>{unit(campaign)}</small></td><td>{number(item.impressions)}</td><td>{number(item.reach)}</td></tr>) : <tr><td colSpan={5}>Meta todavía no ha entregado este desglose para el período.</td></tr>}</tbody></table></div>
     </details>
 
-    <details className="panel meta-expand"><summary>Creativos y anuncios <span>{creatives.length ? `${creatives.length} anuncios` : 'Pendiente de sincronización'}</span></summary>
-      <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Anuncio</th><th>Resultado</th><th>Inversión</th><th>Costo / resultado</th><th>Alcance</th></tr></thead><tbody>{creatives.length ? creatives.map(({ campaign, item }) => {
+    <details className="panel meta-expand" onToggle={event => {
+      if (!event.currentTarget.open || !creatives.length || previewState.status !== 'idle') return;
+      setPreviewState({ status: 'loading', images: {} });
+      getCreativePreviews(projectId, month)
+        .then(images => setPreviewState({ status: 'loaded', images }))
+        .catch(() => setPreviewState({ status: 'error', images: {} }));
+    }}><summary>Creativos y anuncios <span>{creatives.length ? `${creatives.length} anuncios` : 'Pendiente de sincronización'}</span></summary>
+      <div className="table-scroll"><table><thead><tr><th>Campaña</th><th>Anuncio</th><th>Vista previa</th><th>Resultado</th><th>Inversión</th><th>Costo / resultado</th><th>Alcance</th></tr></thead><tbody>{creatives.length ? creatives.map(({ campaign, item }) => {
         const value = result(campaign, item);
-        return <tr key={`${campaign.campaignId}:${item.id}`}><td>{campaign.campaignName}</td><td>{item.label}</td><td>{number(value)} <small>{unit(campaign)}</small></td><td>{money(item.spend)}</td><td>{value ? money(item.spend / value) : '—'}</td><td>{number(item.reach)}</td></tr>;
-      }) : <tr><td colSpan={6}>Anuncios pendientes de la próxima sincronización de Meta.</td></tr>}</tbody></table></div>
+        const preview = previewState.images[item.id];
+        return <tr key={`${campaign.campaignId}:${item.id}`}><td>{campaign.campaignName}</td><td>{item.label}</td><td>{preview ? <CreativeImage url={preview.imageUrl} label={item.label} /> : <span className="muted">{previewState.status === 'loading' ? 'Cargando…' : previewState.status === 'error' ? 'No disponible' : previewState.status === 'loaded' ? 'Sin imagen' : 'Abrir para cargar'}</span>}</td><td>{number(value)} <small>{unit(campaign)}</small></td><td>{money(item.spend)}</td><td>{value ? money(item.spend / value) : '—'}</td><td>{number(item.reach)}</td></tr>;
+      }) : <tr><td colSpan={7}>Anuncios pendientes de la próxima sincronización de Meta.</td></tr>}</tbody></table></div>
+      <p className="table-note">Imágenes obtenidas automáticamente del creativo de cada anuncio mediante Meta Graph API. La vista completa por ubicación puede variar respecto a esta imagen.</p>
     </details>
 
     <details className="panel meta-expand"><summary>Tendencia diaria <span>{daily.length ? `${daily.length} registros` : 'Pendiente de sincronización'}</span></summary>
       <div className="table-scroll"><table><thead><tr><th>Fecha</th><th>Campaña</th><th>Resultado</th><th>Inversión</th><th>Impresiones</th></tr></thead><tbody>{daily.length ? daily.map(({ campaign, item }) => <tr key={`${campaign.campaignId}:${item.date}`}><td>{item.date}</td><td>{campaign.campaignName}</td><td>{number(campaign.lineName === 'RECONOCIMIENTO' ? item.impressions : campaign.lineName === 'INTERACCIÓN' ? item.engagement : item.leads)} <small>{unit(campaign)}</small></td><td>{money(item.spend)}</td><td>{number(item.impressions)}</td></tr>) : <tr><td colSpan={5}>Tendencia pendiente de la próxima sincronización de Meta.</td></tr>}</tbody></table></div>
     </details>
   </section>;
+}
+
+function CreativeImage({ url, label }: { url: string; label: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <span className="muted">Imagen no disponible</span>;
+  return <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Abrir imagen de ${label}`}><img className="creative-preview" src={url} alt={`Vista previa de ${label}`} loading="lazy" onError={() => setFailed(true)} /></a>;
 }

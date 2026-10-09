@@ -71,11 +71,56 @@ export function BreakdownVisuals({ campaigns }: { campaigns: CampaignMetrics[] }
 function DemographicChart({ campaign, unit }: { campaign: CampaignMetrics; unit: string }) {
   const metric = unit === 'impresiones' ? 'impressions' : unit === 'interacciones' ? 'engagement' : 'leads';
   const groups = demographicChartData(campaign.demographics || [], metric);
-  const max = Math.max(1, ...groups.flatMap(group => [group.female || 0, group.male || 0, group.unknown || 0]));
-  const sexes = [{ key: 'female', label: 'Mujeres' }, { key: 'male', label: 'Hombres' }, { key: 'unknown', label: 'Sin especificar' }] as const;
-  return <article className="panel viz-card viz-demographics"><div className="panel-heading"><h3>Edad y sexo</h3><span className="mini-tag">{unit.toUpperCase()}</span></div>
-    {groups.length ? <div className="demographic-grid">{groups.map(group => <div className="demographic-age" key={group.age}><strong>{group.age} años</strong>{sexes.filter(sex => group[sex.key] !== undefined && (sex.key !== 'unknown' || (group.unknown || 0) > 0)).map(sex => <div className={`demographic-row ${sex.key}`} key={sex.key}><span>{sex.label}</span><div className="viz-track" role="img" aria-label={`${group.age} años, ${sex.label}: ${number(group[sex.key]!)} ${unit}`}><i style={{ width: `${group[sex.key]! / max * 100}%` }} /></div><b>{number(group[sex.key]!)}</b></div>)}</div>)}</div> : <p className="subtle viz-empty">Sin desglose de edad y sexo para esta campaña.</p>}
-    <p className="table-note">Cada barra representa {unit} de un segmento de la campaña seleccionada. La escala es común para todas las edades y sexos.</p>
+  const maxValue = Math.max(1, ...groups.flatMap(group => [group.female || 0, group.male || 0, group.unknown || 0]));
+  const magnitude = 10 ** Math.floor(Math.log10(maxValue / 4));
+  const tickStep = [1, 2, 5, 10].map(step => step * magnitude).find(step => step >= maxValue / 4) || magnitude * 10;
+  const axisMax = Math.ceil(maxValue / tickStep) * tickStep;
+  const ticks = Array.from({ length: Math.round(axisMax / tickStep) + 1 }, (_, index) => index * tickStep);
+  const chart = { width: 820, height: 322, left: 56, right: 12, top: 18, bottom: 42 };
+  const plotHeight = chart.height - chart.top - chart.bottom;
+  const columnWidth = (chart.width - chart.left - chart.right) / Math.max(1, groups.length);
+  const totals = {
+    male: groups.reduce((sum, group) => sum + (group.male || 0), 0),
+    female: groups.reduce((sum, group) => sum + (group.female || 0), 0),
+    unknown: groups.reduce((sum, group) => sum + (group.unknown || 0), 0),
+  };
+  const total = totals.male + totals.female + totals.unknown;
+  const spend = { male: 0, female: 0, unknown: 0 };
+  for (const item of campaign.demographics || []) {
+    const sex = item.label.split('·').at(-1)?.trim().toLowerCase();
+    spend[sex === 'male' ? 'male' : sex === 'female' ? 'female' : 'unknown'] += item.spend;
+  }
+  const sexes = [
+    { key: 'male', label: 'Hombres', color: '#8765e8' },
+    { key: 'female', label: 'Mujeres', color: '#31c9cb' },
+    { key: 'unknown', label: 'Sin especificar', color: '#a1b3bf' },
+  ] as const;
+  const visibleSexes = sexes.filter(sex => sex.key !== 'unknown' || totals.unknown > 0);
+  const axisNumber = (value: number) => new Intl.NumberFormat('es-CO', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  const costLabel = unit === 'impresiones' ? 'Costo por mil impresiones' : 'Costo por resultado';
+  return <article className="panel viz-card viz-demographics"><div className="panel-heading"><h3>Distribución por sexo y edad</h3><span className="mini-tag">{unit.toUpperCase()}</span></div>
+    {groups.length ? <>
+      <p className="demographic-scroll-hint">Desliza para ver todas las edades →</p>
+      <div className="demographic-chart-scroll" role="region" aria-label="Gráfica de edad y sexo con desplazamiento horizontal" tabIndex={0}><svg className="demographic-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label={`Distribución de ${unit} por edad y sexo de ${campaign.campaignName}`}>
+        {ticks.map(tick => { const y = chart.top + plotHeight * (1 - tick / axisMax); return <g key={tick}><line x1={chart.left} x2={chart.width - chart.right} y1={y} y2={y} className="demographic-gridline"/><text x={chart.left - 10} y={y + 4} textAnchor="end" className="demographic-axis-label">{axisNumber(tick)}</text></g>; })}
+        {groups.map((group, index) => {
+          const center = chart.left + columnWidth * (index + 0.5);
+          const barWidth = Math.min(30, columnWidth / (visibleSexes.length + 1));
+          const gap = 4;
+          const totalWidth = visibleSexes.length * barWidth + (visibleSexes.length - 1) * gap;
+          return <g key={group.age}>
+            {visibleSexes.map((sex, sexIndex) => {
+              const value = group[sex.key] || 0;
+              const height = value / axisMax * plotHeight;
+              return <rect key={sex.key} x={center - totalWidth / 2 + sexIndex * (barWidth + gap)} y={chart.top + plotHeight - height} width={barWidth} height={height} rx="3" fill={sex.color}><title>{group.age} años · {sex.label}: {number(value)} {unit}</title></rect>;
+            })}
+            <text x={center} y={chart.height - 16} textAnchor="middle" className="demographic-age-label">{group.age}</text>
+          </g>;
+        })}
+      </svg></div>
+      <div className="demographic-legend">{visibleSexes.map(sex => <div key={sex.key}><span className="demographic-swatch" style={{ background: sex.color }} /><div><strong>{sex.label}</strong><span>{total ? `${number(totals[sex.key] / total * 100)}%` : '0%'} · {number(totals[sex.key])} {unit}</span><small>{costLabel}: {totals[sex.key] ? money(spend[sex.key] / totals[sex.key] * (unit === 'impresiones' ? 1000 : 1)) : '—'}</small></div></div>)}</div>
+    </> : <p className="subtle viz-empty">Sin desglose de edad y sexo para esta campaña.</p>}
+    <p className="table-note">Resultados de la campaña seleccionada según el desglose de Meta. Se muestran los rangos que la API informó; los totales por sexo corresponden a esos segmentos.</p>
   </article>;
 }
 
