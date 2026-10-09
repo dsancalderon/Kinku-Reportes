@@ -255,6 +255,32 @@ main{padding-top:28px}
 .demographic-legend span{font-size:11px;color:#d4e4dc}
 .demographic-legend small{font-size:10px;color:var(--muted)}
 .creative-preview{display:block;width:128px;height:96px;object-fit:contain;border:1px solid var(--glass-border);border-radius:8px;background:#071a18}
+.hubspot-report{margin:2px 0 26px}
+.hubspot-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.hubspot-intro{margin:10px 0 20px}
+.hubspot-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.hubspot-kpis .panel{padding:17px 20px;min-height:112px}
+.hubspot-kpis span,.hubspot-kpis small{display:block;color:var(--muted);font-size:11px}
+.hubspot-kpis strong{display:block;color:#fff;font-size:28px;line-height:1.2;margin:6px 0;font-variant-numeric:tabular-nums}
+.hubspot-charts{display:grid;grid-template-columns:1fr 1.2fr;gap:18px}
+.hubspot-chart-card{min-height:420px}
+.hubspot-chart-card>.subtle{margin:6px 0 0}
+.hubspot-donut{display:block;width:min(100%,270px);margin:18px auto 10px}
+.hubspot-donut-total{fill:#fff;font-family:inherit;font-size:39px;font-weight:800}
+.hubspot-donut-caption{fill:var(--muted);font-family:inherit;font-size:12px}
+.hubspot-legend{display:grid;gap:8px;margin-top:15px}
+.hubspot-legend>div{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:11px}
+.hubspot-legend i{height:10px;width:10px;border-radius:50%}
+.hubspot-legend span{color:#dcebe5}
+.hubspot-legend strong{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hubspot-status-chart{display:grid;gap:14px;margin:32px 0 12px}
+.hubspot-status-row{display:grid;grid-template-columns:118px minmax(0,1fr) 20px;gap:9px;align-items:center;font-size:11px}
+.hubspot-status-row>span{text-align:right;color:#dcebe5}
+.hubspot-status-row>strong{font-size:11px;font-variant-numeric:tabular-nums}
+.hubspot-status-track{height:27px;background:repeating-linear-gradient(90deg,#a8c4b430 0 1px,transparent 1px 16.666%);border-left:1px solid #a8c4b470}
+.hubspot-status-track i{display:block;height:100%;background:#ffa283;border-radius:0 4px 4px 0}
+.hubspot-status-axis{display:flex;justify-content:space-between;margin-left:127px;margin-right:20px;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+.hubspot-source{margin:15px 4px 0;line-height:1.6}
 .recognition-panel{margin-bottom:18px}
 .recognition-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px}
 .recognition-totals>div{padding:15px 18px;border:1px solid var(--glass-border);border-radius:14px;background:#0d2b27a6}
@@ -278,6 +304,13 @@ main{padding-top:28px}
 .source-notice p{flex-basis:100%;margin:0}
 }
 @media(max-width:760px){:root{--gutter:12px}
+.hubspot-kpis{grid-template-columns:1fr 1fr;gap:10px}
+.hubspot-kpis .panel{padding:14px;min-height:98px}
+.hubspot-kpis .panel:first-child{grid-column:1/-1}
+.hubspot-charts{grid-template-columns:1fr;gap:12px}
+.hubspot-chart-card{min-height:0}
+.hubspot-status-row{grid-template-columns:106px minmax(0,1fr) 18px;gap:6px}
+.hubspot-status-axis{margin-left:112px;margin-right:18px}
 .demographic-scroll-hint{display:block}
 .demographic-legend{justify-content:flex-start;gap:14px 22px}
 .recognition-totals strong{font-size:20px}

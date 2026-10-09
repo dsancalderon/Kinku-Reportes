@@ -7,6 +7,7 @@ import { SyncStatus } from './components/SyncStatus';
 import { Consolidated } from './components/Consolidated';
 import { AuroraBackground } from './components/AuroraBackground';
 import { MetaDetails } from './components/MetaDetails';
+import { HubspotReport } from './components/HubspotReport';
 import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
 
@@ -124,13 +125,13 @@ export function App() {
             </select>
             <span>
               America/Bogota ·{' '}
-              {mode === 'historical' ? '01 — 30 SEP, 2026' : getLivePeriodLabel()}
+              {mode === 'historical' ? '01 — 30 SEP, 2026' : view === 'hubspot' ? '01 — 09 OCT, 2026' : getLivePeriodLabel()}
             </span>
           </div>
         </header>
 
         <main id="dashboard">
-          {!showConsolidated && <SyncStatus
+          {!showConsolidated && view !== 'hubspot' && <SyncStatus
             key={`${projectId}-${mode}`}
             projectId={projectId}
             month={selectedMonth}
@@ -174,12 +175,16 @@ export function App() {
             <div className="source-notice">
               <span className="notice-dot" />
               <span>
-                {mode === 'historical'
+                {view === 'hubspot' && mode === 'live'
+                  ? 'HUBSPOT · CORTE 09 OCTUBRE 2026'
+                  : mode === 'historical'
                   ? 'INFORME HISTÓRICO · SEPTIEMBRE 2026'
                   : 'MES EN CURSO · OCTUBRE 2026 (AL DÍA)'}
               </span>
               <p>
-                {mode === 'historical'
+                {view === 'hubspot' && mode === 'live'
+                  ? 'Datos de contactos compartidos en capturas de HubSpot; corresponden al período del 1 al 9 de octubre y no se actualizan con la API de Meta.'
+                  : mode === 'historical'
                   ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) con Meta Ads, Google Ads y metas registradas.'
                   : 'Métricas de Meta Ads acumuladas desde el 01 de octubre hasta el último corte de la API, comparadas con las metas del Flow de octubre. Google Ads no tiene metas ni anuncios previstos para este mes.'}
               </p>
@@ -254,7 +259,7 @@ export function App() {
               onNavigate={() => setView('connections')}
             />
           ) : view === 'hubspot' ? (
-            <HubspotReport projectName={project.name} onNavigate={() => setView('connections')} />
+            <HubspotReport projectName={project.name} month={selectedMonth} onNavigate={() => setView('connections')} />
           ) : !overview ? (
             <div className="panel empty">
               <span>◎</span>
@@ -346,7 +351,7 @@ export function App() {
               {showConsolidated ? 'Consolidado Kinku' : project.name} ·{' '}
               {mode === 'historical'
                 ? 'Histórico septiembre 2026'
-                : 'Octubre 2026 · acumulado al día'}
+                : view === 'hubspot' ? 'HubSpot · corte 09 octubre 2026' : 'Octubre 2026 · acumulado al día'}
             </span>
           </footer>
         </main>
@@ -806,20 +811,5 @@ function GoogleReport({
         }
       />
     </>
-  );
-}
-
-function HubspotReport({ projectName, onNavigate }: { projectName: string; onNavigate: () => void }) {
-  return (
-    <section className="panel empty">
-      <div className="provider-icon">H</div>
-      <h2>HubSpot · {projectName}</h2>
-      <p>
-        El informe anterior incluía ciclo de vida, estado del contacto, leads calientes y citas. Los datos de octubre de {projectName} están pendientes de recibir por chat; se mostrarán aquí con su fecha de corte cuando estén disponibles.
-      </p>
-      <button className="primary" onClick={onNavigate}>
-        Ver conexiones ↗
-      </button>
-    </section>
   );
 }
