@@ -5,7 +5,7 @@ import { meetsMonthlyPace, monthlyPace } from '../lib/pace';
 import { ConsolidatedVisuals } from './ReportVisuals';
 
 export function Consolidated({ overviews, month, loading, error }: { overviews: Overview[]; month: string; loading: boolean; error: string }) {
-  const { rows, metaLeads, metaLeadTarget, googleConversions, spend } = buildConsolidated(overviews);
+  const { rows, metaLeads, metaLeadTarget, spend } = buildConsolidated(overviews);
   const percentage = (value: number) => new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   const googleComparison = rows.some(row => row.channel === 'google_ads' && row.target !== null && row.targetUnit !== row.unit);
   const hasGoogleActivity = overviews.some(overview => overview.campaigns.some(campaign => campaign.provider === 'google_ads'));
@@ -15,8 +15,8 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
     <div className="consolidated-heading">
       <div><p className="eyebrow">TIC TAC AGENCY / KINKU</p><h2>Resumen de <em>cumplimiento</em></h2><p className="subtle">{monthLabel} · America/Bogota · Meta Ads{hasGoogleActivity ? ' y Google Ads' : ''}</p></div>
       <div className="consolidated-cards">
-        <article><span className="kpi-label"><LeadsIcon />LEADS META</span><strong>{loading ? '…' : number(metaLeads)}</strong></article>
-        <article><span className="kpi-label">{hasGoogleActivity ? <GoogleIcon /> : <LeadsIcon />}{hasGoogleActivity ? 'CONV. GOOGLE' : 'META LEADS META'}</span><strong>{loading ? '…' : hasGoogleActivity ? number(googleConversions) : number(metaLeadTarget)}</strong></article>
+        <article><span className="kpi-label"><LeadsIcon />LEADS META ADS</span><strong>{loading ? '…' : number(metaLeads)}</strong></article>
+        <article><span className="kpi-label"><LeadsIcon />META LEADS</span><strong>{loading ? '…' : number(metaLeadTarget)}</strong></article>
         <article><span className="kpi-label"><SpendIcon />INVERSIÓN TOTAL</span><strong>{loading ? '…' : money(spend)}</strong></article>
       </div>
     </div>
@@ -35,12 +35,12 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
               <td>{row.channel === 'meta' ? 'Meta Ads' : 'Google Ads'}</td>
               <td><strong>{row.name}</strong>{row.campaigns.length > 0 && <small className="campaign-names" title={row.campaigns.join(' · ')}>{row.campaigns.join(' · ')}</small>}</td>
               <td>{row.unit}</td>
-              <td>{number(row.result)}</td><td>{money(row.spend)}</td><td>{money(row.budget)}</td><td>{number(row.target)}{row.target !== null && row.targetUnit && <small> {row.targetUnit}</small>}{row.targetNote?.startsWith('Revisada') && <small className="target-revision">{row.targetNote}</small>}</td><td>{money(row.targetCostPerResult)}</td>
+              <td>{number(row.result)}</td><td>{money(row.spend)}</td><td>{money(row.budget)}</td><td>{number(row.target)}{row.target !== null && row.targetUnit && <small> {row.targetUnit}</small>}</td><td>{money(row.targetCostPerResult)}</td>
               <td>{pct === null || onPace === null ? <span className="muted">{row.targetUnit && row.targetUnit !== row.unit ? 'Por validar' : row.targetNote || (row.target === null ? 'Sin definir' : 'Pendiente')}</span> : <div className="fulfillment"><strong className={onPace ? 'success' : 'below'}>{percentage(pct)}%</strong><span className="fulfillment-track" title={`Ritmo esperado: ${percentage(pace.percent)}%`}><i style={{ width: `${Math.min(100, pct)}%` }} className={onPace ? 'success' : 'below'} /></span></div>}</td>
             </tr>;
           })}</tbody>
         </table></div>
-        <p className="table-note">Cada fila de Meta corresponde a una línea y muestra sus campañas del mes. Las metas y presupuestos proceden del Flow, salvo las revisiones indicadas. {googleComparison ? 'Google muestra conversiones y leads como unidades separadas; valide su equivalencia antes de evaluar cumplimiento.' : 'Google solo aparece cuando registra campañas o metas en el mes.'}</p>
+        <p className="table-note">Cada fila de Meta corresponde a una línea y muestra sus campañas del mes. Las metas y presupuestos incluyen las revisiones aprobadas del Flow. {googleComparison ? 'Google muestra conversiones y leads como unidades separadas; valide su equivalencia antes de evaluar cumplimiento.' : 'Google solo aparece cuando registra campañas o metas en el mes.'}</p>
       </div>}
   </section>;
 }
@@ -48,12 +48,6 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
 function LeadsIcon() {
   return <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M5 5v18h18" /><path d="M9 18l4-5 3 3 6-8" /><path d="M18 8h4v4" />
-  </svg>;
-}
-
-function GoogleIcon() {
-  return <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
-    <path d="M21.5 9.2A9 9 0 1 0 23 14h-8.5" />
   </svg>;
 }
 

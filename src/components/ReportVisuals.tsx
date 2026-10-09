@@ -51,7 +51,7 @@ function breakdownValue(campaign: CampaignMetrics, item: MetaBreakdown) {
   return campaign.lineName === 'RECONOCIMIENTO' ? item.impressions : campaign.lineName === 'INTERACCIÓN' ? item.engagement : item.leads;
 }
 
-type CreativePreview = { imageUrl: string; thumbnailUrl: string | null };
+type CreativePreview = { imageUrl: string | null; thumbnailUrl: string | null; previewUrl?: string };
 
 export function BreakdownVisuals({ campaigns, month, projectId }: { campaigns: CampaignMetrics[]; month: string; projectId: ProjectId }) {
   const candidates = campaigns.filter(campaign => campaign.provider === 'meta' && (campaign.platformBreakdown?.length || campaign.creatives?.length || campaign.demographics?.length));
@@ -97,8 +97,9 @@ function CreativeBars({ rows, previews, previewStatus, unit }: { rows: { id: str
 function CreativeThumbnail({ preview, label, status }: { preview?: CreativePreview; label: string; status: 'loading' | 'loaded' | 'error' }) {
   const [url, setUrl] = useState(preview?.thumbnailUrl || preview?.imageUrl || '');
   useEffect(() => setUrl(preview?.thumbnailUrl || preview?.imageUrl || ''), [preview]);
+  if (!url && preview?.previewUrl) return <a className="viz-creative-placeholder viz-preview-link" href={preview.previewUrl} target="_blank" rel="noopener noreferrer" aria-label={`Ver anuncio ${label} en Meta`}>Ver anuncio ↗</a>;
   if (!url) return <span className="viz-creative-placeholder" aria-label={`Miniatura de ${label} no disponible`}>{status === 'loading' ? 'Cargando' : status === 'error' ? 'Error' : 'Sin imagen'}</span>;
-  return <a className="viz-creative-image" href={preview?.imageUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir imagen de ${label}`}><img src={url} alt={`Miniatura de ${label}`} loading="lazy" onError={() => setUrl(current => current === preview?.thumbnailUrl && preview.imageUrl !== current ? preview.imageUrl : '')} /></a>;
+  return <a className="viz-creative-image" href={preview?.imageUrl || undefined} target="_blank" rel="noopener noreferrer" aria-label={`Abrir imagen de ${label}`}><img src={url} alt={`Miniatura de ${label}`} loading="lazy" onError={() => setUrl(current => current === preview?.thumbnailUrl && preview.imageUrl !== current ? preview.imageUrl || '' : '')} /></a>;
 }
 
 function DemographicChart({ campaign, unit }: { campaign: CampaignMetrics; unit: string }) {

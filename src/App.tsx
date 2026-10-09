@@ -9,6 +9,7 @@ import { AuroraBackground } from './components/AuroraBackground';
 import { HubspotReport } from './components/HubspotReport';
 import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
+import { executiveReading } from './lib/executive';
 
 type View = 'summary' | Provider | 'connections';
 
@@ -308,7 +309,8 @@ export function App() {
               <BreakdownVisuals campaigns={overview.campaigns} month={selectedMonth} projectId={projectId} />
 
               <Executive
-                note={view === 'summary' && projectId === 'pekin' ? `${report.note} ${pekinGoogleSummary(overview)}` : report.note}
+                reading={executiveReading(report, selectedMonth)}
+                context={view === 'summary' && projectId === 'pekin' ? pekinGoogleSummary(overview) : undefined}
                 source={
                   view === 'summary' && projectId === 'pekin'
                     ? 'Fuentes: Meta Ads Graph API, Google Ads API si registra actividad y Flow del mes'
@@ -605,13 +607,18 @@ function CampaignTable({ report }: { report: ReportView }) {
   );
 }
 
-function Executive({ note, source }: { note: string; source: string }) {
+function Executive({ reading, context, source }: { reading: ReturnType<typeof executiveReading>; context?: string; source: string }) {
+  const { analysis, recommendations } = reading;
   return (
     <section className="executive">
       <div className="executive-icon">✳</div>
       <div>
         <p className="eyebrow">RESUMEN EJECUTIVO / RENDIMIENTO REAL</p>
-        <p>{note}</p>
+        <h3>Análisis</h3>
+        <ul>{analysis.map(item => <li key={item}>{item}</li>)}</ul>
+        {context && <p>{context}</p>}
+        <h3>Recomendaciones</h3>
+        <ul>{recommendations.map(item => <li key={item}>{item}</li>)}</ul>
         <small>{source}</small>
       </div>
     </section>
@@ -801,7 +808,16 @@ function GoogleReport({
       </section>
 
       <Executive
-        note={`Datos extraídos directamente de Google Ads API v25 para la cuenta publicitaria ID 9240696515 (${projectName}). En este período se ejecutaron ${money(totalSpend)} COP en inversión, generando un total de ${number(totalConversions)} conversiones y un costo promedio por conversión de ${avgCpa ? money(avgCpa) : '0'} COP.`}
+        reading={{
+          analysis: [
+            `${number(totalConversions)} conversiones con ${money(totalSpend)} COP invertidos en ${campaigns.length} campañas; costo medio por conversión: ${avgCpa ? money(avgCpa) : '—'}.`,
+            `${number(totalClicks)} clics sobre ${number(totalImpressions)} impresiones; CTR del ${number(avgCtr)}%. Las conversiones corresponden a la definición de Google Ads.`,
+          ],
+          recommendations: [
+            totalConversions > 0 ? 'Comparar el costo por conversión de cada campaña antes de redistribuir la inversión.' : 'Revisar el seguimiento de conversiones y las campañas sin resultados antes de aumentar el gasto.',
+            'Validar qué acciones cuentan como conversión y su calidad comercial antes de compararlas con los leads de Meta.',
+          ],
+        }}
         source={
           mode === 'historical'
             ? 'Fuente: Google Ads API v25 · Corte mensual 01 al 30 de septiembre 2026'

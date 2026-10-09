@@ -135,6 +135,9 @@ td small{font-size:10px;color:var(--muted)}
 .executive{display:flex;gap:18px;padding:24px 26px;background:linear-gradient(115deg,#25421cb3,#0b1f1dcc);border:1px solid #b8e04a4d;border-radius:20px;box-shadow:var(--glass-shadow);margin:18px 0}
 .executive-icon{font-size:26px;color:var(--lime);text-shadow:0 0 14px #a6dc3a80}
 .executive .eyebrow{font-size:10px}
+.executive h3{font-size:12px;color:var(--lime-soft);margin:14px 0 6px}
+.executive ul{margin:0 0 10px;padding-left:18px;color:#e0ebe6;font-size:12px;line-height:1.65}
+.executive li+li{margin-top:4px}
 .executive p:not(.eyebrow){font-size:13px;line-height:1.75;color:#e0ebe6;margin:0 0 9px}
 .executive small{font-size:10px;color:var(--muted)}
 .channel-links{display:grid;grid-template-columns:repeat(2,1fr);gap:15px;margin:22px 0}
@@ -241,6 +244,7 @@ main{padding-top:28px}
 .viz-creative-image,.viz-creative-placeholder{display:flex;align-items:center;justify-content:center;width:62px;height:62px;border:1px solid var(--glass-border);border-radius:9px;background:#071a18;overflow:hidden}
 .viz-creative-image img{width:100%;height:100%;object-fit:contain}
 .viz-creative-placeholder{font-size:9px;color:var(--muted);text-align:center;padding:3px}
+.viz-preview-link{color:var(--lime-soft);text-decoration:none;line-height:1.35}
 .viz-creative-content{min-width:0}
 .viz-creative-label{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:11px}
 .viz-creative-label span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e4f0e9}
