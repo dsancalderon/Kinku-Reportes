@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { fetchMetaPages, classifyCampaignLine, matchesProject } from '../server/integrations/meta';
 import { buildConsolidated } from '../src/lib/consolidated';
 import type { Overview } from '../shared/contracts';
+import { resolveCampaignLine } from '../server/overview';
+import { octoberTargets } from '../data/flows/octubre-2026';
 
 test('Meta recorre todas las páginas y asigna la campaña de interacción a Pekín', async () => {
   const originalFetch = globalThis.fetch;
@@ -21,6 +23,13 @@ test('Meta recorre todas las páginas y asigna la campaña de interacción a Pek
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('la campaña awareness de Pekín se reporta como reconocimiento en octubre', () => {
+  const campaign = { name: 'CAMPAÑA AWARENNES PEKIN| INTERACCION SEPTIEMBRE', provider: 'meta', objective: 'OUTCOME_ENGAGEMENT' };
+  assert.equal(resolveCampaignLine('pekin', campaign, octoberTargets), 'RECONOCIMIENTO');
+  assert.equal(resolveCampaignLine('metriku', campaign, octoberTargets), 'INTERACCIÓN');
+  assert.equal(resolveCampaignLine('pekin', campaign, []), 'INTERACCIÓN');
 });
 
 test('el consolidado muestra la meta de 35 leads junto a las conversiones de Google', () => {

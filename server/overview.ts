@@ -23,6 +23,20 @@ const number = (val: number | null) =>
     ? '—'
     : new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(val);
 
+export function resolveCampaignLine(
+  projectId: ProjectId,
+  camp: { name: string; objective?: string | null; provider?: string | null },
+  targets: MonthlyTarget[],
+): string {
+  if (projectId === 'pekin' && camp.provider !== 'google_ads' && /AWAREN(N)?ES|AWARENESS/i.test(camp.name)
+    && targets.some(target => target.channel === 'meta' && target.objective === 'awareness' && target.lineName === 'RECONOCIMIENTO')) {
+    return 'RECONOCIMIENTO';
+  }
+  const classified = classifyCampaignLine(camp.name, camp.objective || undefined);
+  if (classified.startsWith('APARTAESTUDIOS ') && targets.some(target => target.lineName === 'APARTAESTUDIOS')) return 'APARTAESTUDIOS';
+  return classified;
+}
+
 export async function getOverviewData(
   projectId: ProjectId,
   selectedMonth: string = '2026-09'
@@ -80,14 +94,7 @@ export async function getOverviewData(
         target.channel === configured.channel && target.lineName === configured.lineName && target.objective === configured.objective
       )),
     ];
-    const lineForCampaign = (camp: { name: string; objective?: string | null }) => {
-      if (selectedMonth === '2026-09' && /AWAREN(N)?ES|AWARENESS/i.test(camp.name) && targets.some(target => target.channel === 'meta' && target.objective === 'awareness' && target.lineName === 'RECONOCIMIENTO')) {
-        return 'RECONOCIMIENTO';
-      }
-      const classified = classifyCampaignLine(camp.name, camp.objective || undefined);
-      if (classified.startsWith('APARTAESTUDIOS ') && targets.some(target => target.lineName === 'APARTAESTUDIOS')) return 'APARTAESTUDIOS';
-      return classified;
-    };
+    const lineForCampaign = (camp: { name: string; objective?: string | null; provider?: string | null }) => resolveCampaignLine(projectId, camp, targets);
 
     // 3. Consultar campañas y métricas extraídas para este mes
     const { data: dbCampaigns } = await supabase
