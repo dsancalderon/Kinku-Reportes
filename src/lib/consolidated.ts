@@ -42,6 +42,7 @@ export function buildConsolidated(overviews: Overview[]) {
           budget: row.budget,
           targetCostPerResult: row.targetCostPerResult,
           target: row.target,
+          targetNote: row.originalTargetKpi !== undefined ? `Revisada (Flow: ${row.originalTargetKpi})` : undefined,
         });
       }
     }

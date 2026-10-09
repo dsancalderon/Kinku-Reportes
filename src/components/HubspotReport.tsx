@@ -12,6 +12,11 @@ export function HubspotReport({ projectName, month, onNavigate }: { projectName:
 
   const hotLeads = data.contactStatus.find(item => item.label === 'Lead Caliente')?.count || 0;
   const appointments = data.contactStatus.find(item => item.label === 'Cita Programada')?.count || 0;
+  const unhelpful = data.contactStatus.find(item => item.label === 'No útil')?.count || 0;
+  const unclassified = data.contactStatus.find(item => item.label === '(Sin valor)')?.count || 0;
+  const pending = data.contactStatus.filter(item => item.label === 'Marcar de nuevo' || item.label === 'Seguimiento').reduce((sum, item) => sum + item.count, 0);
+  const mql = data.lifecycle.find(item => item.label === 'Lead calificado por marketing')?.count || 0;
+  const sql = data.lifecycle.find(item => item.label === 'Lead calificado por ventas')?.count || 0;
   return <section className="hubspot-report" aria-label={`HubSpot de ${projectName}`}>
     <div className="hubspot-heading">
       <div><p className="eyebrow">GESTIÓN COMERCIAL / HUBSPOT</p><h2>Contactos de {data.owner}</h2></div>
@@ -46,6 +51,22 @@ export function HubspotReport({ projectName, month, onNavigate }: { projectName:
         </div>
       </article>
     </div>
+    <article className="panel hubspot-executive">
+      <div className="panel-heading"><h3>Lectura ejecutiva</h3><span className="mini-tag">CORTE DE HUBSPOT</span></div>
+      <p>De los {data.totalContacts} contactos de {data.owner}, {mql} están calificados por marketing y {sql} por ventas. Es una fotografía de las etapas actuales, no una tasa de conversión entre ellas.</p>
+      <div className="hubspot-insights">
+        <div><strong>{number(pending)} en gestión pendiente</strong><span>Marcar de nuevo y seguimiento reúnen {percentage(pending, data.totalContacts)}% del corte. Cada caso necesita próxima acción y fecha.</span></div>
+        <div><strong>{number(unhelpful)} no útiles</strong><span>Representan {percentage(unhelpful, data.totalContacts)}%. Conviene revisar el motivo de descarte antes de cambiar la segmentación.</span></div>
+        <div><strong>{number(unclassified)} sin estado</strong><span>La falta de clasificación afecta a {percentage(unclassified, data.totalContacts)}% y limita la lectura comercial.</span></div>
+      </div>
+      <h4>Recomendaciones para el próximo corte</h4>
+      <ol>
+        <li>Priorizar los {hotLeads} leads calientes y confirmar la cita programada; registrar el resultado de cada contacto.</li>
+        <li>Asignar responsable y fecha a los {pending} casos de seguimiento o nueva llamada, y completar el estado de los {unclassified} contactos sin valor.</li>
+        <li>Clasificar el motivo de los {unhelpful} contactos no útiles y cruzarlo con campaña de origen cuando HubSpot tenga ese dato, para identificar ajustes de captación.</li>
+        <li>Revisar con ventas los criterios de avance de los {mql} MQL actuales hacia SQL y registrar el motivo de cada decisión; este corte no permite calcular una tasa de conversión.</li>
+      </ol>
+    </article>
     <p className="table-note hubspot-source">Fuente: capturas de HubSpot compartidas en el chat. Corte fijo al 9 de octubre de 2026, con dos filtros activos cuyos criterios no aparecen en las capturas. Estos datos se actualizarán cuando compartas un nuevo corte; no provienen de una conexión API.</p>
   </section>;
 }

@@ -108,6 +108,7 @@ h3{font-weight:600;font-size:15px;letter-spacing:-.2px;margin:0}
 .chart-legend b.pace-legend{border-left:2px dashed #f4cf74;background:transparent}
 .target-marker{position:absolute;top:-4px;height:17px;border-left:2px solid #fff}
 .goal-row small{display:flex;justify-content:space-between;color:var(--dim);font-size:10px}
+.target-revision{display:block;color:#eacb88;font-size:10px;line-height:1.4;margin:5px 0 0;white-space:normal}
 .chart-legend{display:flex;gap:20px;color:var(--muted);font-size:9px;padding-top:8px}
 .chart-legend i,.spend-row i{display:inline-block;width:7px;height:7px;background:var(--project);margin-right:6px;border-radius:50%}
 .chart-legend b{display:inline-block;width:2px;height:9px;background:#fff;margin-right:6px}
@@ -284,6 +285,16 @@ main{padding-top:28px}
 .hubspot-status-track i{display:block;height:100%;background:#ffa283;border-radius:0 4px 4px 0}
 .hubspot-status-axis{display:flex;justify-content:space-between;margin-left:127px;margin-right:20px;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
 .hubspot-source{margin:15px 4px 0;line-height:1.6}
+.hubspot-executive{margin-top:18px;border-color:#b8e04a55}
+.hubspot-executive>p{font-size:12px;color:#e2eee7;margin:14px 0 19px;max-width:920px}
+.hubspot-insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hubspot-insights>div{border:1px solid var(--glass-border);border-radius:12px;background:#0b2421ad;padding:13px 14px}
+.hubspot-insights strong,.hubspot-insights span{display:block}
+.hubspot-insights strong{font-size:12px;color:var(--lime-soft);margin-bottom:5px}
+.hubspot-insights span{font-size:11px;color:#c8dbd1;line-height:1.5}
+.hubspot-executive h4{font-size:12px;margin:20px 0 8px}
+.hubspot-executive ol{margin:0;padding-left:21px;color:#dcebe5;font-size:11px;line-height:1.6}
+.hubspot-executive li+li{margin-top:6px}
 @media(max-width:1320px){.consolidated-heading{align-items:stretch;flex-direction:column}
 .consolidated-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
@@ -306,6 +317,7 @@ main{padding-top:28px}
 .hubspot-kpis .panel{padding:14px;min-height:98px}
 .hubspot-kpis .panel:first-child{grid-column:1/-1}
 .hubspot-charts{grid-template-columns:1fr;gap:12px}
+.hubspot-insights{grid-template-columns:1fr}
 .hubspot-chart-card{min-height:0}
 .hubspot-status-row{grid-template-columns:106px minmax(0,1fr) 18px;gap:6px}
 .hubspot-status-axis{margin-left:112px;margin-right:18px}

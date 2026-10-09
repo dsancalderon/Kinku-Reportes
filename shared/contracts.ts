@@ -18,6 +18,8 @@ export interface MonthlyTarget {
   lineName: string;
   targetKpi: number;
   targetUnit: string;
+  originalTargetKpi?: number;
+  targetRevisionDate?: string;
   budgetSpend: number;
   targetCostPerResult: number;
 }
@@ -81,6 +83,8 @@ export interface ReportRowItem {
   spend: number | null;
   budget: number | null;
   targetCostPerResult?: number | null;
+  originalTargetKpi?: number;
+  targetRevisionDate?: string;
   unit: string;
   costPerResult: number | null;
 }

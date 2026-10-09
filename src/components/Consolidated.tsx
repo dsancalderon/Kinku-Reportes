@@ -35,12 +35,12 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
               <td>{row.channel === 'meta' ? 'Meta Ads' : 'Google Ads'}</td>
               <td><strong>{row.name}</strong>{row.campaigns.length > 0 && <small className="campaign-names" title={row.campaigns.join(' · ')}>{row.campaigns.join(' · ')}</small>}</td>
               <td>{row.unit}</td>
-              <td>{number(row.result)}</td><td>{money(row.spend)}</td><td>{money(row.budget)}</td><td>{number(row.target)}{row.target !== null && row.targetUnit && <small> {row.targetUnit}</small>}</td><td>{money(row.targetCostPerResult)}</td>
+              <td>{number(row.result)}</td><td>{money(row.spend)}</td><td>{money(row.budget)}</td><td>{number(row.target)}{row.target !== null && row.targetUnit && <small> {row.targetUnit}</small>}{row.targetNote?.startsWith('Revisada') && <small className="target-revision">{row.targetNote}</small>}</td><td>{money(row.targetCostPerResult)}</td>
               <td>{pct === null || onPace === null ? <span className="muted">{row.targetUnit && row.targetUnit !== row.unit ? 'Por validar' : row.targetNote || (row.target === null ? 'Sin definir' : 'Pendiente')}</span> : <div className="fulfillment"><strong className={onPace ? 'success' : 'below'}>{percentage(pct)}%</strong><span className="fulfillment-track" title={`Ritmo esperado: ${percentage(pace.percent)}%`}><i style={{ width: `${Math.min(100, pct)}%` }} className={onPace ? 'success' : 'below'} /></span></div>}</td>
             </tr>;
           })}</tbody>
         </table></div>
-        <p className="table-note">Cada fila de Meta corresponde a una línea y muestra sus campañas del mes. Las metas y presupuestos proceden del Flow. {googleComparison ? 'Google muestra conversiones y leads como unidades separadas; valide su equivalencia antes de evaluar cumplimiento.' : 'Google solo aparece cuando registra campañas o metas en el mes.'}</p>
+        <p className="table-note">Cada fila de Meta corresponde a una línea y muestra sus campañas del mes. Las metas y presupuestos proceden del Flow, salvo las revisiones indicadas. {googleComparison ? 'Google muestra conversiones y leads como unidades separadas; valide su equivalencia antes de evaluar cumplimiento.' : 'Google solo aparece cuando registra campañas o metas en el mes.'}</p>
       </div>}
   </section>;
 }

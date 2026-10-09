@@ -37,6 +37,25 @@ export function resolveCampaignLine(
   return classified;
 }
 
+function sameTarget(a: MonthlyTarget, b: MonthlyTarget): boolean {
+  return a.projectId === b.projectId && a.month === b.month && a.channel === b.channel && a.objective === b.objective && a.lineName === b.lineName;
+}
+
+export function mergeMonthlyTargets(databaseTargets: MonthlyTarget[], configuredTargets: MonthlyTarget[]): MonthlyTarget[] {
+  return [
+    ...databaseTargets.map(target => {
+      const revision = configuredTargets.find(configured => sameTarget(configured, target) && configured.originalTargetKpi !== undefined);
+      return revision ? {
+        ...target,
+        targetKpi: revision.targetKpi,
+        originalTargetKpi: revision.originalTargetKpi,
+        targetRevisionDate: revision.targetRevisionDate,
+      } : target;
+    }),
+    ...configuredTargets.filter(configured => !databaseTargets.some(target => sameTarget(configured, target))),
+  ];
+}
+
 export async function getOverviewData(
   projectId: ProjectId,
   selectedMonth: string = '2026-09'
@@ -88,12 +107,7 @@ export async function getOverviewData(
       budgetSpend: Number(t.budget_spend),
       targetCostPerResult: Number(t.target_cost_per_result),
     }));
-    const targets = [
-      ...databaseTargets,
-      ...configuredTargets.filter(configured => !databaseTargets.some(target =>
-        target.channel === configured.channel && target.lineName === configured.lineName && target.objective === configured.objective
-      )),
-    ];
+    const targets = mergeMonthlyTargets(databaseTargets, configuredTargets);
     const lineForCampaign = (camp: { name: string; objective?: string | null; provider?: string | null }) => resolveCampaignLine(projectId, camp, targets);
 
     // 3. Consultar campañas y métricas extraídas para este mes
@@ -231,6 +245,8 @@ export async function getOverviewData(
             name: t.lineName,
             result: resValue,
             target: t.targetKpi,
+            originalTargetKpi: t.originalTargetKpi,
+            targetRevisionDate: t.targetRevisionDate,
             spend: spendValue,
             budget: t.budgetSpend,
             targetCostPerResult: t.targetCostPerResult,
@@ -266,7 +282,7 @@ export async function getOverviewData(
         [
           label,
           hasAnyExtractedData ? number(totalResult) : '—',
-          totalTarget > 0 ? `Meta del período: ${number(totalTarget)} ${unit}` : 'Sin meta definida',
+          totalTarget > 0 ? `${objTargets.some(target => target.originalTargetKpi !== undefined) ? 'Meta revisada' : 'Meta del período'}: ${number(totalTarget)} ${unit}` : 'Sin meta definida',
         ],
         [
           'Inversión',

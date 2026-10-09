@@ -1,11 +1,12 @@
 import type { MonthlyTarget } from '../../shared/contracts';
 
 // Filas del Flow de octubre confirmadas por el usuario; los totales impresos en el PDF no coinciden.
+// La meta de interacción de Métriku fue revisada por el usuario el 09/10/2026.
 export const octoberTargets: MonthlyTarget[] = [
   { projectId: 'pekin', month: '2026-10', channel: 'meta', objective: 'awareness', lineName: 'RECONOCIMIENTO', targetKpi: 125000, targetUnit: 'impresiones', budgetSpend: 500000, targetCostPerResult: 4 },
   { projectId: 'pekin', month: '2026-10', channel: 'meta', objective: 'leads', lineName: 'APARTAESTUDIOS VIVIENDA', targetKpi: 67, targetUnit: 'leads', budgetSpend: 1000000, targetCostPerResult: 15000 },
   { projectId: 'pekin', month: '2026-10', channel: 'meta', objective: 'leads', lineName: 'APARTAESTUDIOS INVERSIONISTA', targetKpi: 67, targetUnit: 'leads', budgetSpend: 1000000, targetCostPerResult: 15000 },
-  { projectId: 'metriku', month: '2026-10', channel: 'meta', objective: 'engagement', lineName: 'INTERACCIÓN', targetKpi: 3044, targetUnit: 'interacciones', budgetSpend: 200000, targetCostPerResult: 5 },
+  { projectId: 'metriku', month: '2026-10', channel: 'meta', objective: 'engagement', lineName: 'INTERACCIÓN', targetKpi: 30000, originalTargetKpi: 3044, targetRevisionDate: '2026-10-09', targetUnit: 'interacciones', budgetSpend: 200000, targetCostPerResult: 5 },
   { projectId: 'metriku', month: '2026-10', channel: 'meta', objective: 'leads', lineName: 'PROPIETARIOS', targetKpi: 150, targetUnit: 'leads', budgetSpend: 1500000, targetCostPerResult: 10000 },
   { projectId: 'metriku', month: '2026-10', channel: 'meta', objective: 'leads', lineName: 'ARRENDATARIOS', targetKpi: 80, targetUnit: 'leads', budgetSpend: 800000, targetCostPerResult: 10000 },
   { projectId: 'skala', month: '2026-10', channel: 'meta', objective: 'leads', lineName: 'INVERSIÓN', targetKpi: 51, targetUnit: 'leads', budgetSpend: 500000, targetCostPerResult: 10000 },
