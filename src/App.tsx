@@ -309,7 +309,7 @@ export function App() {
               <BreakdownVisuals campaigns={overview.campaigns} month={selectedMonth} projectId={projectId} />
 
               <Executive
-                reading={executiveReading(report, selectedMonth)}
+                reading={executiveReading(report, selectedMonth, executiveCutoff(overview))}
                 context={view === 'summary' && projectId === 'pekin' ? pekinGoogleSummary(overview) : undefined}
                 source={
                   view === 'summary' && projectId === 'pekin'
@@ -365,6 +365,11 @@ function pekinGoogleSummary(overview: Overview): string {
   const spend = google.reduce((sum, campaign) => sum + (campaign.spend || 0), 0);
   const conversions = google.reduce((sum, campaign) => sum + (campaign.platformConversions || 0), 0);
   return `Google Ads: ${number(conversions)} conversiones registradas y ${money(spend)} COP de inversión en ${google.length} campañas. Las conversiones de Google se muestran separadas de los leads de Meta.`;
+}
+
+function executiveCutoff(overview: Overview): Date {
+  const latest = overview.campaigns.filter(campaign => campaign.provider === 'meta').map(campaign => campaign.date).sort().at(-1);
+  return latest ? new Date(`${latest}T12:00:00-05:00`) : new Date();
 }
 
 function PekinChannelSummary({ overview }: { overview: Overview }) {

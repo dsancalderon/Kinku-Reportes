@@ -2,6 +2,13 @@ import type { ReportView } from '../../shared/contracts';
 import { money, number } from './historical';
 import { monthlyPace } from './pace';
 
+function costMoney(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return value < 100
+    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+    : money(value);
+}
+
 export function executiveReading(report: ReportView, month: string, now: Date = new Date()) {
   const measured = report.rows.filter(row => row.result !== null);
   const targeted = report.rows.filter(row => row.target !== null && row.target > 0 && row.unit === report.unit);
@@ -12,9 +19,11 @@ export function executiveReading(report: ReportView, month: string, now: Date = 
   const recommendations: string[] = [];
 
   if (!measured.length) {
+    const planned = report.rows.filter(row => row.target !== null && row.target > 0);
+    const plannedTotal = planned.reduce((sum, row) => sum + (row.target || 0), 0);
     return {
-      analysis: [`Aún no hay resultados extraídos de Meta Ads para ${report.label.toLowerCase()} en este período.`],
-      recommendations: ['Verificar la sincronización y revisar el cumplimiento cuando Meta entregue resultados.'],
+      analysis: [`Meta Ads no registra campañas con resultados de ${report.label.toLowerCase()} en este período.${planned.length ? ` La meta de ${number(plannedTotal)} ${report.unit} sigue sin avance medible.` : ''}`],
+      recommendations: ['Confirmar la fecha de activación de las campañas y evaluar el cumplimiento cuando exista actividad en Meta.'],
     };
   }
 
@@ -24,6 +33,7 @@ export function executiveReading(report: ReportView, month: string, now: Date = 
     const result = targeted.reduce((sum, row) => sum + (row.result || 0), 0);
     const fulfillment = result / target * 100;
     analysis.push(`Las líneas con meta acumulan ${number(fulfillment)}% de cumplimiento frente al ${number(pace)}% esperado para el corte.`);
+    if (targeted.length > 1) analysis.push(`Avance por línea: ${targeted.map(row => `${row.name} ${number((row.result || 0) / (row.target || 1) * 100)}%`).join(' · ')}.`);
     const lagging = targeted.filter(row => (row.result || 0) / (row.target || 1) * 100 < pace);
     if (lagging.length) {
       recommendations.push(`Revisar ${lagging.map(row => row.name).join(' y ')}: ${lagging.length === 1 ? 'está' : 'están'} por debajo del ritmo de la meta mensual.`);
@@ -49,7 +59,15 @@ export function executiveReading(report: ReportView, month: string, now: Date = 
       recommendations.push('Comparar creativos y segmentos con mejor costo por resultado antes de redistribuir presupuesto.');
   }
 
-  if (report.unit === 'leads') recommendations.push('Contrastar el volumen de leads con su avance comercial en HubSpot cuando exista el corte correspondiente.');
+  const withCostTarget = measured.filter(row => row.result !== null && row.result > 0 && row.costPerResult !== null && typeof row.targetCostPerResult === 'number' && row.targetCostPerResult > 0);
+  if (withCostTarget.length) {
+    const costUnit = report.unit === 'impresiones' ? 'por impresión' : report.unit === 'interacciones' ? 'por interacción' : 'por lead';
+    analysis.push(`Costo ${costUnit} frente al objetivo: ${withCostTarget.map(row => `${row.name} ${costMoney(row.costPerResult)} / ${costMoney(row.targetCostPerResult)}`).join(' · ')}.`);
+    const expensive = withCostTarget.filter(row => (row.costPerResult || 0) > (row.targetCostPerResult || 0));
+    if (expensive.length) recommendations.push(`Optimizar creativos y segmentación de ${expensive.map(row => row.name).join(' y ')} para acercar el costo por resultado al objetivo.`);
+  }
+
+  if (report.unit === 'leads') recommendations.push('Validar la calidad y el seguimiento comercial de los leads antes de ampliar la inversión.');
   else if (report.unit === 'interacciones') recommendations.push('Revisar la calidad de la interacción por anuncio; interacciones y leads son métricas distintas.');
   else recommendations.push('Revisar frecuencia y distribución del alcance para sostener la exposición sin saturación.');
 

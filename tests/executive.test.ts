@@ -29,3 +29,27 @@ test('la lectura ejecutiva no declara cumplimiento total con filas sin extracci�
   assert.match(reading.analysis.join(' '), /pendiente de extracción completa/);
   assert.doesNotMatch(reading.analysis.join(' '), /cumplimiento frente/);
 });
+
+test('la lectura ejecutiva señala el costo que supera el objetivo de una línea', () => {
+  const report: ReportView = {
+    id: 'leads', label: 'Clientes potenciales', unit: 'leads', stats: [], note: '',
+    rows: [
+      { name: 'Inversionista', result: 22, target: 67, spend: 447597, budget: 1000000, unit: 'leads', costPerResult: 447597 / 22, targetCostPerResult: 15000 },
+      { name: 'Vivienda', result: 23, target: 67, spend: 443957, budget: 1000000, unit: 'leads', costPerResult: 443957 / 23, targetCostPerResult: 15000 },
+    ],
+  };
+  const reading = executiveReading(report, '2026-10', new Date('2026-10-16T17:00:00Z'));
+  assert.match(reading.analysis.join(' '), /Avance por línea/);
+  assert.match(reading.analysis.join(' '), /Costo por lead frente al objetivo/);
+  assert.match(reading.recommendations.join(' '), /Optimizar creativos y segmentación/);
+});
+
+test('sin campañas con datos, el ejecutivo informa la meta pendiente sin atribuir resultados', () => {
+  const report: ReportView = {
+    id: 'leads', label: 'Clientes potenciales', unit: 'leads', stats: [], note: '',
+    rows: [{ name: 'Vivienda', result: null, target: 65, spend: null, budget: 500000, unit: 'leads', costPerResult: null }],
+  };
+  const reading = executiveReading(report, '2026-10', new Date('2026-10-16T17:00:00Z'));
+  assert.match(reading.analysis.join(' '), /sin avance medible/);
+  assert.doesNotMatch(reading.analysis.join(' '), /cumplimiento/);
+});
