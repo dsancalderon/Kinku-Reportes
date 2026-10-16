@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CampaignMetrics, Overview, ReportView, MetaBreakdown } from '../../shared/contracts';
 import type { ProjectId } from '../../shared/projects';
 import { dailyChartData, demographicChartData, projectChartData } from '../lib/chartData';
@@ -34,14 +34,49 @@ export function ConsolidatedVisuals({ overviews, month }: { overviews: Overview[
 }
 
 export function DailyVisual({ report, campaigns }: { report: ReportView; campaigns: CampaignMetrics[] }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [size, setSize] = useState({ width: 960, height: 165 });
   const days = dailyChartData(report, campaigns);
+  const hasDays = days.length > 0;
   const max = Math.max(1, ...days.map(day => day.cumulative));
-  const points = days.map((day, index) => `${days.length === 1 ? 50 : 5 + index / (days.length - 1) * 90},${88 - day.cumulative / max * 76}`).join(' ');
+  const left = 10;
+  const right = size.width - 10;
+  const top = 16;
+  const bottom = size.height - 14;
+  const coordinates = days.map((day, index) => ({
+    x: days.length === 1 ? size.width / 2 : left + index / (days.length - 1) * (right - left),
+    y: bottom - day.cumulative / max * (bottom - top),
+  }));
+  const points = coordinates.map(point => `${point.x},${point.y}`).join(' ');
+
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const measure = () => {
+      const width = Math.round(svg.clientWidth);
+      const height = Math.round(svg.clientHeight);
+      if (width && height) setSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, [hasDays]);
+
   return <section className="panel viz-daily" aria-label={`Evolución diaria de ${report.unit}`}>
     <div className="panel-heading"><h3>Evolución diaria · {report.label.toLowerCase()}</h3><span className="mini-tag">{report.unit.toUpperCase()}</span></div>
-    {days.length ? <>
+    {hasDays ? <>
       <div className="viz-daily-summary"><strong><AnimatedValue text={number(days.at(-1)!.cumulative)} /></strong><span>{report.unit} acumuladas · {days.at(-1)!.date}</span></div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Tendencia acumulada de ${report.unit} desde ${days[0].date} hasta ${days.at(-1)!.date}`}><line x1="0" x2="100" y1="88" y2="88" className="viz-axis"/><line x1="0" x2="100" y1="50" y2="50" className="viz-gridline"/><polyline points={points} pathLength={1} className="viz-line"/>{days.map((day, index) => <circle key={day.date} cx={days.length === 1 ? 50 : 5 + index / (days.length - 1) * 90} cy={88 - day.cumulative / max * 76} r="1.25" className="viz-point"><title>{day.date}: {number(day.value)} {report.unit}; acumulado {number(day.cumulative)}</title></circle>)}</svg>
+      <svg ref={svgRef} viewBox={`0 0 ${size.width} ${size.height}`} role="img" aria-label={`Tendencia acumulada de ${report.unit} desde ${days[0].date} hasta ${days.at(-1)!.date}`}>
+        <line x1={left} x2={right} y1={bottom} y2={bottom} className="viz-axis" />
+        <line x1={left} x2={right} y1={(top + bottom) / 2} y2={(top + bottom) / 2} className="viz-gridline" />
+        <polyline points={points} className="viz-line" />
+        {days.map((day, index) => <circle key={day.date} cx={coordinates[index].x} cy={coordinates[index].y} r="3.2" className="viz-point" style={{ animationDelay: `${0.25 + (days.length === 1 ? 0 : index / (days.length - 1)) * 1.1}s` }}><title>{day.date}: {number(day.value)} {report.unit}; acumulado {number(day.cumulative)}</title></circle>)}
+      </svg>
       <div className="viz-dates"><span>{days[0].date}</span><span>{days.at(-1)!.date}</span></div>
       <p className="table-note">Acumulado de las campañas de esta línea con desglose diario disponible en Meta.</p>
     </> : <p className="subtle viz-empty">Meta aún no entregó datos diarios para esta línea.</p>}
