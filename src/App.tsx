@@ -10,6 +10,7 @@ import { HubspotReport } from './components/HubspotReport';
 import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
 import { executiveReading } from './lib/executive';
+import { pekinHubspotOctober } from './lib/hubspotSnapshot';
 import { AnimatedValue, MotionEnabledContext } from './components/AnimatedValue';
 
 type View = 'summary' | Provider | 'connections';
@@ -43,6 +44,7 @@ export function App() {
 
   const project = projects.find(item => item.id === projectId)!;
   const selectedMonth = mode === 'historical' ? '2026-09' : '2026-10';
+  const hubspotCutoffDay = Number(pekinHubspotOctober.through.slice(-2));
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -178,7 +180,7 @@ export function App() {
             </select>
             <span>
               America/Bogota ·{' '}
-              {mode === 'historical' ? '01 — 30 SEP, 2026' : view === 'hubspot' ? '01 — 09 OCT, 2026' : getLivePeriodLabel()}
+              {mode === 'historical' ? '01 — 30 SEP, 2026' : view === 'hubspot' ? `01 — ${hubspotCutoffDay} OCT, 2026` : getLivePeriodLabel()}
             </span>
             <button type="button" className="motion-toggle" aria-pressed={animationsEnabled} onClick={toggleAnimations}>
               {animationsEnabled ? 'Animaciones activadas' : 'Activar animaciones'}
@@ -233,14 +235,14 @@ export function App() {
               <span className="notice-dot" />
               <span>
                 {view === 'hubspot' && mode === 'live'
-                  ? 'HUBSPOT · CORTE 09 OCTUBRE 2026'
+                  ? `HUBSPOT · CORTE ${hubspotCutoffDay} OCTUBRE 2026`
                   : mode === 'historical'
                   ? 'INFORME HISTÓRICO · SEPTIEMBRE 2026'
                   : 'MES EN CURSO · OCTUBRE 2026 (AL DÍA)'}
               </span>
               <p>
                 {view === 'hubspot' && mode === 'live'
-                  ? 'Datos de contactos compartidos en capturas de HubSpot; corresponden al período del 1 al 9 de octubre y no se actualizan con la API de Meta.'
+                  ? `Datos de contactos compartidos en capturas de HubSpot; corresponden al período del 1 al ${hubspotCutoffDay} de octubre y no se actualizan con la API de Meta.`
                   : mode === 'historical'
                   ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) con Meta Ads, Google Ads y metas registradas.'
                   : 'Métricas de Meta Ads acumuladas desde el 01 de octubre hasta el último corte de la API, comparadas con las metas del Flow de octubre. Google Ads no tiene metas ni anuncios previstos para este mes.'}
@@ -407,7 +409,7 @@ export function App() {
               {showConsolidated ? 'Consolidado Kinku' : project.name} ·{' '}
               {mode === 'historical'
                 ? 'Histórico septiembre 2026'
-                : view === 'hubspot' ? 'HubSpot · corte 09 octubre 2026' : 'Octubre 2026 · acumulado al día'}
+                : view === 'hubspot' ? `HubSpot · corte ${hubspotCutoffDay} octubre 2026` : 'Octubre 2026 · acumulado al día'}
             </span>
           </footer>
         </main>
