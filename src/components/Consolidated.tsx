@@ -1,6 +1,7 @@
 import type { Overview } from '../../shared/contracts';
 import { buildConsolidated } from '../lib/consolidated';
 import { money, number } from '../lib/historical';
+import { AnimatedValue } from './AnimatedValue';
 import { meetsMonthlyPace, monthlyPace } from '../lib/pace';
 import { ConsolidatedVisuals } from './ReportVisuals';
 
@@ -15,9 +16,9 @@ export function Consolidated({ overviews, month, loading, error }: { overviews: 
     <div className="consolidated-heading">
       <div><p className="eyebrow">TIC TAC AGENCY / KINKU</p><h2>Resumen de <em>cumplimiento</em></h2><p className="subtle">{monthLabel} · America/Bogota · Meta Ads{hasGoogleActivity ? ' y Google Ads' : ''}</p></div>
       <div className="consolidated-cards">
-        <article><span className="kpi-label"><LeadsIcon />LEADS META ADS</span><strong>{loading ? '…' : number(metaLeads)}</strong></article>
-        <article><span className="kpi-label"><LeadsIcon />META LEADS</span><strong>{loading ? '…' : number(metaLeadTarget)}</strong></article>
-        <article><span className="kpi-label"><SpendIcon />INVERSIÓN TOTAL</span><strong>{loading ? '…' : money(spend)}</strong></article>
+        <article><span className="kpi-label"><LeadsIcon />LEADS META ADS</span><strong><AnimatedValue text={loading ? '…' : number(metaLeads)} /></strong></article>
+        <article><span className="kpi-label"><LeadsIcon />META LEADS</span><strong><AnimatedValue text={loading ? '…' : number(metaLeadTarget)} /></strong></article>
+        <article><span className="kpi-label"><SpendIcon />INVERSIÓN TOTAL</span><strong><AnimatedValue text={loading ? '…' : money(spend)} /></strong></article>
       </div>
     </div>
     {error && <p role="alert" className="consolidated-error">{error}</p>}

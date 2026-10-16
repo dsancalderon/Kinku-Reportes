@@ -1,5 +1,6 @@
 import { pekinHubspotOctober } from '../lib/hubspotSnapshot';
 import { number } from '../lib/historical';
+import { AnimatedValue } from './AnimatedValue';
 
 export function HubspotReport({ projectName, month, onNavigate }: { projectName: string; month: string; onNavigate: () => void }) {
   const data = month === pekinHubspotOctober.month ? pekinHubspotOctober : null;
@@ -25,9 +26,9 @@ export function HubspotReport({ projectName, month, onNavigate }: { projectName:
     <p className="subtle hubspot-intro">Pekín · Datos compartidos desde HubSpot para el 1 al 9 de octubre de 2026. Ambas gráficas describen los mismos {data.totalContacts} contactos.</p>
 
     <div className="hubspot-kpis">
-      <div className="panel"><span>Contactos</span><strong>{number(data.totalContacts)}</strong><small>Base de las dos gráficas</small></div>
-      <div className="panel"><span>Leads calientes</span><strong>{number(hotLeads)}</strong><small>Estado del contacto</small></div>
-      <div className="panel"><span>Citas programadas</span><strong>{number(appointments)}</strong><small>No equivale a cita efectiva</small></div>
+      <div className="panel"><span>Contactos</span><strong><AnimatedValue text={number(data.totalContacts)} /></strong><small>Base de las dos gráficas</small></div>
+      <div className="panel"><span>Leads calientes</span><strong><AnimatedValue text={number(hotLeads)} /></strong><small>Estado del contacto</small></div>
+      <div className="panel"><span>Citas programadas</span><strong><AnimatedValue text={number(appointments)} /></strong><small>No equivale a cita efectiva</small></div>
     </div>
 
     <div className="hubspot-charts">

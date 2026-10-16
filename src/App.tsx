@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react';
 import type { Overview, Provider, ReportView, ReportRowItem, ConnectionStatus, CampaignMetrics } from '../shared/contracts';
 import { projects, providerLabels, type ProjectId } from '../shared/projects';
 import { getOverview } from './lib/api';
@@ -10,6 +10,7 @@ import { HubspotReport } from './components/HubspotReport';
 import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
 import { executiveReading } from './lib/executive';
+import { AnimatedValue } from './components/AnimatedValue';
 
 type View = 'summary' | Provider | 'connections';
 
@@ -76,6 +77,31 @@ export function App() {
   const reportsMap = overview?.reports || {};
   const availableReports = Object.values(reportsMap);
   const report: ReportView | undefined = reportsMap[objective] || availableReports[0];
+
+  useLayoutEffect(() => {
+    const root = document.querySelector('#dashboard');
+    if (!root) return;
+    const elements = root.querySelectorAll<HTMLElement>(
+      '.metrics .metric, .consolidated-cards article, .pekin-channel-summary > div, .dashboard-grid > .panel, .viz-daily, .viz-grid > .viz-card, .hubspot-kpis > .panel, .hubspot-charts > .panel, .consolidated-panel'
+    );
+    elements.forEach(element => element.classList.add('reveal-on-view'));
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion || !('IntersectionObserver' in window)) {
+      elements.forEach(element => element.classList.add('is-visible'));
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px 40px 0px' });
+    elements.forEach(element => {
+      if (!element.classList.contains('is-visible')) observer.observe(element);
+    });
+    return () => observer.disconnect();
+  }, [showConsolidated, projectId, view, mode, objective, overview, consolidatedOverviews]);
 
   return (
     <div className="app" style={{ '--project': project.accent } as CSSProperties}>
@@ -381,9 +407,9 @@ function PekinChannelSummary({ overview }: { overview: Overview }) {
   const investment = [...meta, ...google].reduce((sum, campaign) => sum + (campaign.spend || 0), 0);
   const leadTarget = overview.targets.filter(target => target.channel === 'meta' && target.targetUnit === 'leads').reduce((sum, target) => sum + target.targetKpi, 0);
   return <section className="pekin-channel-summary" aria-label="Resumen de Meta y Google Ads de Pekín">
-    <div><span>LEADS META</span><strong>{number(leads)}</strong><small>Captación en campañas Meta</small></div>
-    <div><span>{google.length ? 'CONVERSIONES GOOGLE ADS' : 'META LEADS META'}</span><strong>{google.length ? number(conversions) : number(leadTarget)}</strong><small>{google.length ? 'Acciones registradas en Google Ads' : 'Flow del período'}</small></div>
-    <div><span>{google.length ? 'INVERSIÓN META + GOOGLE' : 'INVERSIÓN META'}</span><strong>{money(investment)}</strong><small>Gasto publicitario total del mes</small></div>
+    <div><span>LEADS META</span><strong><AnimatedValue text={number(leads)} /></strong><small>Captación en campañas Meta</small></div>
+    <div><span>{google.length ? 'CONVERSIONES GOOGLE ADS' : 'META LEADS META'}</span><strong><AnimatedValue text={google.length ? number(conversions) : number(leadTarget)} /></strong><small>{google.length ? 'Acciones registradas en Google Ads' : 'Flow del período'}</small></div>
+    <div><span>{google.length ? 'INVERSIÓN META + GOOGLE' : 'INVERSIÓN META'}</span><strong><AnimatedValue text={money(investment)} /></strong><small>Gasto publicitario total del mes</small></div>
   </section>;
 }
 
@@ -405,7 +431,7 @@ function Metrics({ stats }: { stats: readonly [string, string, string][] }) {
             {label}
             <span>↗</span>
           </div>
-          <strong>{value}</strong>
+          <strong><AnimatedValue text={value} /></strong>
           <small>{hint}</small>
         </article>
       ))}
@@ -470,7 +496,7 @@ function GoalChart({ report, month }: { report: ReportView; month: string }) {
             <div className="goal-row" key={row.name}>
               <div>
                 <span>{row.name}</span>
-                <strong className={onPace === null ? '' : onPace ? 'on-track' : 'behind'}>{pct !== null ? `${number(pct)}%` : '—'}</strong>
+                <strong className={onPace === null ? '' : onPace ? 'on-track' : 'behind'}><AnimatedValue text={pct !== null ? `${number(pct)}%` : '—'} /></strong>
               </div>
               <div className="goal-track">
                 <div className={`goal-fill ${onPace === null ? '' : onPace ? 'on-track' : 'behind'}`} style={{ width: `${fillWidth}%` }} />
@@ -528,7 +554,7 @@ function SpendChart({ report }: { report: ReportView }) {
         <span className="mini-tag">COP</span>
       </div>
       <div className="spend-total">
-        <strong>{money(total)}</strong>
+        <strong><AnimatedValue text={money(total)} /></strong>
         <span>Inversión · {report.label.toLowerCase()}</span>
       </div>
       <div className="allocation">
@@ -549,7 +575,7 @@ function SpendChart({ report }: { report: ReportView }) {
             <i style={{ opacity: 1 - i * 0.4 }} />
             {row.name}
           </span>
-          <strong>{money(row.spend)}</strong>
+          <strong><AnimatedValue text={money(row.spend)} /></strong>
         </div>
       ))}
     </section>
@@ -744,22 +770,22 @@ function GoogleReport({
       <div className="metrics">
         <article className="metric">
           <div className="metric-label">Inversión Google Ads<span>↗</span></div>
-          <strong>{money(totalSpend)} COP</strong>
+          <strong><AnimatedValue text={`${money(totalSpend)} COP`} /></strong>
           <small>Presupuesto ejecutado</small>
         </article>
         <article className="metric highlight">
           <div className="metric-label">Conversiones totales<span>↗</span></div>
-          <strong>{number(totalConversions)}</strong>
+          <strong><AnimatedValue text={number(totalConversions)} /></strong>
           <small>Acciones registradas en Google Ads</small>
         </article>
         <article className="metric">
           <div className="metric-label">CPA promedio<span>↗</span></div>
-          <strong>{avgCpa ? `${money(avgCpa)} COP` : '—'}</strong>
+          <strong><AnimatedValue text={avgCpa ? `${money(avgCpa)} COP` : '—'} /></strong>
           <small>Costo por conversión</small>
         </article>
         <article className="metric">
           <div className="metric-label">Clics e Impresiones<span>↗</span></div>
-          <strong>{number(totalClicks)} clics</strong>
+          <strong><AnimatedValue text={`${number(totalClicks)} clics`} /></strong>
           <small>{number(totalImpressions)} imp · CTR {avgCtr ? avgCtr.toFixed(2) : 0}%</small>
         </article>
       </div>

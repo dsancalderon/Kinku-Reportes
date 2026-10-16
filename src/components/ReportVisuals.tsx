@@ -5,6 +5,7 @@ import { dailyChartData, demographicChartData, projectChartData } from '../lib/c
 import { getCreativePreviews } from '../lib/api';
 import { meetsMonthlyPace, monthlyPace } from '../lib/pace';
 import { money, number } from '../lib/historical';
+import { AnimatedValue } from './AnimatedValue';
 
 function PercentBars({ rows, unit, currency = false, month }: { rows: { label: string; actual: number | null; target: number | null }[]; unit: string; currency?: boolean; month?: string }) {
   const format = currency ? money : number;
@@ -14,7 +15,7 @@ function PercentBars({ rows, unit, currency = false, month }: { rows: { label: s
     return <div className="viz-bar-row" key={row.label}>
       <div className="viz-bar-label"><strong>{row.label}</strong><span>{row.actual === null ? `Sin datos / meta ${row.target === null ? 'sin definir' : `${format(row.target)} ${unit}`}` : `${format(row.actual)} / ${row.target === null ? 'sin meta' : format(row.target)} ${unit}`}</span></div>
       <div className="viz-track" role="img" aria-label={`${row.label}: ${pct === null ? 'sin porcentaje verificable' : `${number(pct)}% de ${unit}${onPace === null ? '' : onPace ? ', al ritmo esperado' : ', debajo del ritmo esperado'}`}`}><i className={month ? onPace === null ? '' : onPace ? 'on-track' : 'behind' : 'neutral'} style={{ width: `${Math.min(100, Math.max(0, pct || 0))}%` }} /></div>
-      <small className={onPace === null ? '' : onPace ? 'on-track' : 'behind'}>{pct === null ? '—' : `${number(pct)}%`}</small>
+      <small className={onPace === null ? '' : onPace ? 'on-track' : 'behind'}><AnimatedValue text={pct === null ? '—' : `${number(pct)}%`} /></small>
     </div>;
   })}</div>;
 }
@@ -39,8 +40,8 @@ export function DailyVisual({ report, campaigns }: { report: ReportView; campaig
   return <section className="panel viz-daily" aria-label={`Evolución diaria de ${report.unit}`}>
     <div className="panel-heading"><h3>Evolución diaria · {report.label.toLowerCase()}</h3><span className="mini-tag">{report.unit.toUpperCase()}</span></div>
     {days.length ? <>
-      <div className="viz-daily-summary"><strong>{number(days.at(-1)!.cumulative)}</strong><span>{report.unit} acumuladas · {days.at(-1)!.date}</span></div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Tendencia acumulada de ${report.unit} desde ${days[0].date} hasta ${days.at(-1)!.date}`}><line x1="0" x2="100" y1="88" y2="88" className="viz-axis"/><line x1="0" x2="100" y1="50" y2="50" className="viz-gridline"/><polyline points={points} className="viz-line"/>{days.map((day, index) => <circle key={day.date} cx={days.length === 1 ? 50 : 5 + index / (days.length - 1) * 90} cy={88 - day.cumulative / max * 76} r="1.25" className="viz-point"><title>{day.date}: {number(day.value)} {report.unit}; acumulado {number(day.cumulative)}</title></circle>)}</svg>
+      <div className="viz-daily-summary"><strong><AnimatedValue text={number(days.at(-1)!.cumulative)} /></strong><span>{report.unit} acumuladas · {days.at(-1)!.date}</span></div>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Tendencia acumulada de ${report.unit} desde ${days[0].date} hasta ${days.at(-1)!.date}`}><line x1="0" x2="100" y1="88" y2="88" className="viz-axis"/><line x1="0" x2="100" y1="50" y2="50" className="viz-gridline"/><polyline points={points} pathLength={1} className="viz-line"/>{days.map((day, index) => <circle key={day.date} cx={days.length === 1 ? 50 : 5 + index / (days.length - 1) * 90} cy={88 - day.cumulative / max * 76} r="1.25" className="viz-point"><title>{day.date}: {number(day.value)} {report.unit}; acumulado {number(day.cumulative)}</title></circle>)}</svg>
       <div className="viz-dates"><span>{days[0].date}</span><span>{days.at(-1)!.date}</span></div>
       <p className="table-note">Acumulado de las campañas de esta línea con desglose diario disponible en Meta.</p>
     </> : <p className="subtle viz-empty">Meta aún no entregó datos diarios para esta línea.</p>}
@@ -89,7 +90,7 @@ function CreativeBars({ rows, previews, previewStatus, unit }: { rows: { id: str
   return <article className="panel viz-card"><div className="panel-heading"><h3>Creativos destacados</h3><span className="mini-tag">{unit.toUpperCase()}</span></div>
     {rows.length ? <div className="viz-creative-list">{rows.map(row => <div className="viz-creative-row" key={row.id}>
       <CreativeThumbnail preview={previews[row.id]} label={row.label} status={previewStatus} />
-      <div className="viz-creative-content"><div className="viz-creative-label"><span title={row.label}>{row.label}</span><strong>{number(row.value)}</strong></div><div className="viz-track" role="img" aria-label={`${row.label}: ${number(row.value)} ${unit}`}><i style={{ width: `${row.value / max * 100}%` }} /></div></div>
+      <div className="viz-creative-content"><div className="viz-creative-label"><span title={row.label}>{row.label}</span><strong><AnimatedValue text={number(row.value)} /></strong></div><div className="viz-track" role="img" aria-label={`${row.label}: ${number(row.value)} ${unit}`}><i style={{ width: `${row.value / max * 100}%` }} /></div></div>
     </div>)}</div> : <p className="subtle viz-empty">Sin desglose por anuncio</p>}
   </article>;
 }
@@ -168,6 +169,6 @@ export function GoogleVisuals({ campaigns }: { campaigns: CampaignMetrics[] }) {
 function RankedBars({ title, rows, unit, empty, currency = false }: { title: string; rows: { label: string; value: number }[]; unit: string; empty: string; currency?: boolean }) {
   const max = Math.max(1, ...rows.map(row => row.value));
   return <article className="panel viz-card"><div className="panel-heading"><h3>{title}</h3><span className="mini-tag">{unit.toUpperCase()}</span></div>
-    {rows.length ? <div className="viz-ranked">{rows.map((row, index) => <div key={`${row.label}-${index}`} className="viz-ranked-row"><div><span title={row.label}>{row.label}</span><strong>{currency ? money(row.value) : number(row.value)}</strong></div><div className="viz-track"><i style={{ width: `${row.value / max * 100}%` }} /></div></div>)}</div> : <p className="subtle viz-empty">{empty}</p>}
+    {rows.length ? <div className="viz-ranked">{rows.map((row, index) => <div key={`${row.label}-${index}`} className="viz-ranked-row"><div><span title={row.label}>{row.label}</span><strong><AnimatedValue text={currency ? money(row.value) : number(row.value)} /></strong></div><div className="viz-track"><i style={{ width: `${row.value / max * 100}%` }} /></div></div>)}</div> : <p className="subtle viz-empty">{empty}</p>}
   </article>;
 }
