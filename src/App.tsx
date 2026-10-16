@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Overview, Provider, ReportView, ReportRowItem, ConnectionStatus, CampaignMetrics } from '../shared/contracts';
 import { projects, providerLabels, type ProjectId } from '../shared/projects';
 import { getOverview } from './lib/api';
@@ -10,7 +10,7 @@ import { HubspotReport } from './components/HubspotReport';
 import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
 import { executiveReading } from './lib/executive';
-import { AnimatedValue } from './components/AnimatedValue';
+import { AnimatedValue, MotionEnabledContext } from './components/AnimatedValue';
 
 type View = 'summary' | Provider | 'connections';
 
@@ -29,9 +29,33 @@ export function App() {
   const [showConsolidated, setShowConsolidated] = useState(true);
   const [consolidatedOverviews, setConsolidatedOverviews] = useState<Overview[]>([]);
   const [refreshRevision, setRefreshRevision] = useState(0);
+  const [systemReducedMotion, setSystemReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [motionPreference, setMotionPreference] = useState<'on' | 'off' | null>(() => {
+    try {
+      const saved = window.localStorage.getItem('kinku-animations');
+      return saved === 'on' || saved === 'off' ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  const animationsEnabled = motionPreference === 'on' || (motionPreference === null && !systemReducedMotion);
+  const previousMotionEnabled = useRef(animationsEnabled);
 
   const project = projects.find(item => item.id === projectId)!;
   const selectedMonth = mode === 'historical' ? '2026-09' : '2026-10';
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setSystemReducedMotion(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  function toggleAnimations() {
+    const next = animationsEnabled ? 'off' : 'on';
+    setMotionPreference(next);
+    try { window.localStorage.setItem('kinku-animations', next); } catch { /* La preferencia sigue activa en esta visita. */ }
+  }
 
   useEffect(() => {
     if (showConsolidated) return;
@@ -85,11 +109,13 @@ export function App() {
       '.metrics .metric, .consolidated-cards article, .pekin-channel-summary > div, .dashboard-grid > .panel, .viz-daily, .viz-grid > .viz-card, .hubspot-kpis > .panel, .hubspot-charts > .panel, .consolidated-panel'
     );
     elements.forEach(element => element.classList.add('reveal-on-view'));
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reducedMotion || !('IntersectionObserver' in window)) {
+    const justEnabled = animationsEnabled && !previousMotionEnabled.current;
+    previousMotionEnabled.current = animationsEnabled;
+    if (!animationsEnabled || !('IntersectionObserver' in window)) {
       elements.forEach(element => element.classList.add('is-visible'));
       return;
     }
+    if (justEnabled) elements.forEach(element => element.classList.remove('is-visible'));
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
@@ -101,10 +127,11 @@ export function App() {
       if (!element.classList.contains('is-visible')) observer.observe(element);
     });
     return () => observer.disconnect();
-  }, [showConsolidated, projectId, view, mode, objective, overview, consolidatedOverviews]);
+  }, [showConsolidated, projectId, view, mode, objective, overview, consolidatedOverviews, animationsEnabled]);
 
   return (
-    <div className="app" style={{ '--project': project.accent } as CSSProperties}>
+    <MotionEnabledContext.Provider value={animationsEnabled}>
+    <div className="app" data-motion={animationsEnabled ? 'on' : 'off'} style={{ '--project': project.accent } as CSSProperties}>
       <AuroraBackground />
       <aside className="sidebar">
         <a href="#dashboard" className="agency">
@@ -153,6 +180,10 @@ export function App() {
               America/Bogota ·{' '}
               {mode === 'historical' ? '01 — 30 SEP, 2026' : view === 'hubspot' ? '01 — 09 OCT, 2026' : getLivePeriodLabel()}
             </span>
+            <button type="button" className="motion-toggle" aria-pressed={animationsEnabled} onClick={toggleAnimations}>
+              {animationsEnabled ? 'Animaciones activadas' : 'Activar animaciones'}
+            </button>
+            {systemReducedMotion && !animationsEnabled && <small className="motion-note">Tu dispositivo tiene el movimiento reducido.</small>}
           </div>
         </header>
 
@@ -382,6 +413,7 @@ export function App() {
         </main>
       </div>
     </div>
+    </MotionEnabledContext.Provider>
   );
 }
 

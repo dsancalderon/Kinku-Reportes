@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+
+export const MotionEnabledContext = createContext(false);
 
 export function numericPresentation(text: string) {
   const match = /\d[\d.]*(?:,\d+)?/.exec(text);
@@ -13,26 +15,32 @@ export function numericPresentation(text: string) {
 }
 
 export function AnimatedValue({ text }: { text: string }) {
+  const enabled = useContext(MotionEnabledContext);
   const element = useRef<HTMLSpanElement>(null);
   const current = useRef(0);
+  const previousEnabled = useRef(enabled);
   const [display, setDisplay] = useState(() => {
     const presentation = numericPresentation(text);
-    return presentation && !(typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-      ? presentation.format(0)
-      : text;
+    return presentation && enabled ? presentation.format(0) : text;
   });
 
   useEffect(() => {
+    const justEnabled = enabled && !previousEnabled.current;
+    previousEnabled.current = enabled;
     const presentation = numericPresentation(text);
     if (!presentation) {
       setDisplay(text);
       current.current = 0;
       return;
     }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (!enabled) {
       setDisplay(text);
       current.current = presentation.value;
       return;
+    }
+    if (justEnabled) {
+      current.current = 0;
+      setDisplay(presentation.format(0));
     }
 
     let frame = 0;
@@ -69,7 +77,7 @@ export function AnimatedValue({ text }: { text: string }) {
       observer?.disconnect();
       cancelAnimationFrame(frame);
     };
-  }, [text]);
+  }, [text, enabled]);
 
   return <span className="animated-value" ref={element}><span className="sr-only">{text}</span><span aria-hidden="true">{display}</span></span>;
 }
