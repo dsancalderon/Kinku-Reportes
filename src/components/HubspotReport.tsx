@@ -72,7 +72,6 @@ export function HubspotReport({ projectName, month, onNavigate }: { projectName:
         <li>Revisar con ventas los criterios de avance de los {mql} MQL y {sql} SQL, y documentar el origen de los {clients} clientes sin inferir tasas de conversión de este corte.</li>
       </ol>
     </article>
-    <p className="table-note hubspot-source">Fuente: capturas de HubSpot compartidas en el chat. Corte fijo al {cutoffDay} de octubre de 2026, con dos filtros activos cuyos criterios no aparecen en las capturas. Estos datos se actualizarán cuando compartas un nuevo corte; no provienen de una conexión API.</p>
   </section>;
 }
 
