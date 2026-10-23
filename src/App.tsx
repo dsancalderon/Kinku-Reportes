@@ -365,6 +365,8 @@ export function App() {
 
               <CampaignTable report={report} />
 
+              {projectId === 'metriku' && report.id === 'leads' && <MetrikuRentalBreakdown campaigns={overview.campaigns} />}
+
               <BreakdownVisuals campaigns={overview.campaigns} month={selectedMonth} projectId={projectId} />
 
               <Executive
@@ -670,6 +672,22 @@ function CampaignTable({ report }: { report: ReportView }) {
       </p>
     </section>
   );
+}
+
+function MetrikuRentalBreakdown({ campaigns }: { campaigns: CampaignMetrics[] }) {
+  const rentals = campaigns.filter(campaign => campaign.provider === 'meta' && campaign.lineName === 'ARRENDATARIOS');
+  if (!rentals.length) return null;
+  return <section className="panel rental-breakdown" aria-label="Apartamentos en arriendo de Métriku">
+    <div className="panel-heading"><h3>Apartamentos en arriendo · detalle por campaña</h3><span className="mini-tag">META ADS</span></div>
+    <p className="subtle">Cada anuncio conserva el nombre registrado en Meta. La meta de 80 leads corresponde al conjunto de Arrendatarios.</p>
+    {rentals.map(campaign => <div className="rental-campaign" key={campaign.campaignId}>
+      <div className="rental-campaign-heading"><strong>{campaign.campaignName}</strong><span>{number(campaign.platformConversions)} leads · {money(campaign.spend)} invertidos</span></div>
+      <div className="table-scroll"><table><thead><tr><th>Anuncio / apartamento</th><th>Leads</th><th>Inversión</th><th>Costo por lead</th></tr></thead><tbody>
+        {(campaign.creatives || []).map(ad => <tr key={ad.id}><td>{ad.label}</td><td>{number(ad.leads)}</td><td>{money(ad.spend)}</td><td>{ad.leads > 0 ? money(ad.spend / ad.leads) : '—'}</td></tr>)}
+        {!campaign.creatives?.length && <tr><td colSpan={4}>Sin desglose por anuncio disponible en Meta.</td></tr>}
+      </tbody></table></div>
+    </div>)}
+  </section>;
 }
 
 function Executive({ reading, context, source }: { reading: ReturnType<typeof executiveReading>; context?: string; source: string }) {

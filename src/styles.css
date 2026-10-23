@@ -125,6 +125,17 @@ h3{font-weight:600;font-size:15px;letter-spacing:-.2px;margin:0}
 .spend-row strong{font-weight:600;color:#fff}
 
 .table-panel{padding-bottom:14px;margin:18px 0}
+.rental-breakdown{margin:18px 0 24px}
+.rental-breakdown>.subtle{margin:10px 0 20px}
+.rental-campaign{padding:18px 0;border-top:1px solid var(--line)}
+.rental-campaign:last-child{padding-bottom:0}
+.rental-campaign-heading{display:flex;justify-content:space-between;align-items:baseline;gap:14px;font-size:12px}
+.rental-campaign-heading strong{color:#eaf5ef;overflow-wrap:anywhere}
+.rental-campaign-heading span{color:var(--lime-soft);white-space:nowrap}
+.rental-campaign .table-scroll{margin-top:10px}
+.rental-campaign table{min-width:580px}
+.rental-campaign td:first-child{white-space:normal;min-width:270px}
+@media(max-width:700px){.rental-campaign-heading{display:grid}.rental-campaign-heading span{white-space:normal}}
 .table-scroll{overflow:auto;margin-top:20px}
 table{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap}
 th{font-size:11px;font-weight:500;color:#cfe0da;padding:0 16px 12px 0}
