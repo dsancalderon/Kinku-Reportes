@@ -17,13 +17,13 @@ type View = 'summary' | Provider | 'connections';
 
 function getLivePeriodLabel(): string {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  return `01 — ${parts.slice(8)} OCT, ${parts.slice(0, 4)}`;
+  return `01 — ${parts.slice(8)} NOV, ${parts.slice(0, 4)}`;
 }
 
 export function App() {
   const [projectId, setProject] = useState<ProjectId>('pekin');
   const [view, setView] = useState<View>('summary');
-  const [mode, setMode] = useState<'historical' | 'live'>('live');
+  const [mode, setMode] = useState<'historical' | 'october' | 'live'>('live');
   const [objective, setObjective] = useState<string>('leads');
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState('');
@@ -43,7 +43,7 @@ export function App() {
   const previousMotionEnabled = useRef(animationsEnabled);
 
   const project = projects.find(item => item.id === projectId)!;
-  const selectedMonth = mode === 'historical' ? '2026-09' : '2026-10';
+  const selectedMonth = mode === 'historical' ? '2026-09' : mode === 'october' ? '2026-10' : '2026-11';
   const hubspotCutoffDay = Number(pekinHubspotOctober.through.slice(-2));
 
   useEffect(() => {
@@ -176,11 +176,12 @@ export function App() {
               onChange={event => setMode(event.target.value as typeof mode)}
             >
               <option value="historical">Informe histórico · septiembre 2026</option>
-              <option value="live">Octubre 2026 · acumulado al día</option>
+              <option value="october">Informe histórico · octubre 2026</option>
+              <option value="live">Noviembre 2026 · acumulado al día</option>
             </select>
             <span>
               America/Bogota ·{' '}
-              {mode === 'historical' ? '01 — 30 SEP, 2026' : view === 'hubspot' ? `01 — ${hubspotCutoffDay} OCT, 2026` : getLivePeriodLabel()}
+              {mode === 'historical' ? '01 — 30 SEP, 2026' : mode === 'october' ? '01 — 31 OCT, 2026' : getLivePeriodLabel()}
             </span>
             <button type="button" className="motion-toggle" aria-pressed={animationsEnabled} onClick={toggleAnimations}>
               {animationsEnabled ? 'Animaciones activadas' : 'Activar animaciones'}
@@ -190,7 +191,7 @@ export function App() {
         </header>
 
         <main id="dashboard">
-          {!showConsolidated && view !== 'hubspot' && <SyncStatus
+          {!showConsolidated && view !== 'hubspot' && mode === 'live' && <SyncStatus
             key={`${projectId}-${mode}`}
             projectId={projectId}
             month={selectedMonth}
@@ -234,18 +235,19 @@ export function App() {
             <div className="source-notice">
               <span className="notice-dot" />
               <span>
-                {view === 'hubspot' && mode === 'live'
+                {view === 'hubspot' && mode === 'october'
                   ? `HUBSPOT · CORTE ${hubspotCutoffDay} OCTUBRE 2026`
                   : mode === 'historical'
                   ? 'INFORME HISTÓRICO · SEPTIEMBRE 2026'
-                  : 'MES EN CURSO · OCTUBRE 2026 (AL DÍA)'}
+                  : mode === 'october' ? 'INFORME HISTÓRICO · OCTUBRE 2026' : 'MES EN CURSO · NOVIEMBRE 2026 (AL DÍA)'}
               </span>
               <p>
-                {view === 'hubspot' && mode === 'live'
+                {view === 'hubspot' && mode === 'october'
                   ? `Datos de contactos compartidos en capturas de HubSpot; corresponden al período del 1 al ${hubspotCutoffDay} de octubre y no se actualizan con la API de Meta.`
                   : mode === 'historical'
                   ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) con Meta Ads, Google Ads y metas registradas.'
-                  : 'Métricas de Meta Ads acumuladas desde el 01 de octubre hasta el último corte de la API, comparadas con las metas del Flow de octubre. Google Ads no tiene metas ni anuncios previstos para este mes.'}
+                  : mode === 'october' ? 'Corte mensual consolidado (01 al 31 de octubre de 2026) con métricas de Meta Ads y metas del Flow de octubre.'
+                  : 'Métricas de Meta Ads acumuladas desde el 01 de noviembre hasta el último corte sincronizado. Las metas de noviembre están pendientes de definición.'}
               </p>
             </div>
           )}
@@ -377,7 +379,8 @@ export function App() {
                     ? 'Fuentes: Meta Ads Graph API, Google Ads API si registra actividad y Flow del mes'
                     : mode === 'historical'
                     ? 'Fuente: Meta Ads Graph API + Flow de Metas Septiembre 2026'
-                    : 'Fuente: Meta Ads Graph API · Acumulado desde el 01 de octubre hasta el último corte sincronizado · Metas: Flow octubre 2026'
+                    : mode === 'october' ? 'Fuente: Meta Ads Graph API · Corte mensual del 01 al 31 de octubre · Metas: Flow octubre 2026'
+                    : 'Fuente: Meta Ads Graph API · Acumulado desde el 01 de noviembre hasta el último corte sincronizado · Sin metas de noviembre definidas'
                 }
               />
 
@@ -411,7 +414,7 @@ export function App() {
               {showConsolidated ? 'Consolidado Kinku' : project.name} ·{' '}
               {mode === 'historical'
                 ? 'Histórico septiembre 2026'
-                : view === 'hubspot' ? `HubSpot · corte ${hubspotCutoffDay} octubre 2026` : 'Octubre 2026 · acumulado al día'}
+                : mode === 'october' ? 'Histórico octubre 2026' : 'Noviembre 2026 · acumulado al día'}
             </span>
           </footer>
         </main>
@@ -733,7 +736,7 @@ function GoogleReport({
   connection?: ConnectionStatus;
   campaigns: CampaignMetrics[];
   month: string;
-  mode: 'historical' | 'live';
+  mode: 'historical' | 'october' | 'live';
   onNavigate: () => void;
 }) {
   const isError = connection?.state === 'error';
@@ -904,7 +907,7 @@ function GoogleReport({
         source={
           mode === 'historical'
             ? 'Fuente: Google Ads API v25 · Corte mensual 01 al 30 de septiembre 2026'
-            : 'Fuente: Google Ads API v25 en vivo · Acumulado al día actual de octubre 2026'
+            : `Fuente: Google Ads API v25 · Período ${month}`
         }
       />
     </>

@@ -16,16 +16,16 @@ export default async function syncHandler(req: IncomingMessage, res: ServerRespo
 
   const url = new URL(req.url ?? '/', 'http://localhost');
   const projectId = ((req as any).query?.project || url.searchParams.get('project')) as ProjectId;
-  const month = ((req as any).query?.month || url.searchParams.get('month') || '2026-10') as string;
+  const month = ((req as any).query?.month || url.searchParams.get('month') || '2026-11') as string;
 
   if (!isProjectId(projectId)) {
     res.writeHead(400);
     res.end(JSON.stringify({ error: 'Selecciona un proyecto válido: pekin, metriku o skala.' }));
     return;
   }
-  if (!['2026-09', '2026-10'].includes(month)) {
+  if (!['2026-09', '2026-10', '2026-11'].includes(month)) {
     res.writeHead(400);
-    res.end(JSON.stringify({ error: 'Selecciona un período válido: 2026-09 o 2026-10.' }));
+    res.end(JSON.stringify({ error: 'Selecciona un período válido: 2026-09, 2026-10 o 2026-11.' }));
     return;
   }
 

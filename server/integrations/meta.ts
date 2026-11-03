@@ -110,7 +110,7 @@ function getMonthDateRanges(monthStr: string): { since: string; until: string } 
 
 export async function syncMetaForProject(
   projectId: ProjectId,
-  months: string[] = ['2026-09', '2026-10']
+  months: string[] = ['2026-11']
 ): Promise<{ count: number; message: string }> {
   const token = process.env.META_ACCESS_TOKEN;
   const accountId = getAccountId();

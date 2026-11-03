@@ -58,7 +58,7 @@ export function mergeMonthlyTargets(databaseTargets: MonthlyTarget[], configured
 
 export async function getOverviewData(
   projectId: ProjectId,
-  selectedMonth: string = '2026-09'
+  selectedMonth: string = '2026-11'
 ): Promise<Overview> {
   const baseConnections = getConnections(projectId);
   const supabase = getSupabase();

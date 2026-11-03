@@ -15,7 +15,7 @@ export default async function overviewHandler(req: IncomingMessage, res: ServerR
 
   const url = new URL(req.url ?? '/', 'http://localhost');
   const projectId = ((req as any).query?.project || url.searchParams.get('project')) as ProjectId;
-  const month = ((req as any).query?.month || url.searchParams.get('month') || '2026-09') as string;
+  const month = ((req as any).query?.month || url.searchParams.get('month') || '2026-11') as string;
 
   if (!isProjectId(projectId)) {
     res.writeHead(400);
