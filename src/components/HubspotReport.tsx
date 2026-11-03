@@ -58,14 +58,14 @@ export function HubspotReport({ projectName, month, onNavigate }: { projectName:
       </article>
     </div>
     <article className="panel hubspot-executive">
-      <div className="panel-heading"><h3>Lectura ejecutiva</h3><span className="mini-tag">CORTE DE HUBSPOT</span></div>
+      <div className="panel-heading"><h3>Lectura ejecutiva · cierre de octubre</h3><span className="mini-tag">CORTE DE HUBSPOT</span></div>
       <p>De los {data.totalContacts} contactos de {data.owner}, {mql} están calificados por marketing, {sql} por ventas y {clients} figuran como clientes. En la clasificación por estado hay {hotLeads} leads calientes, {scheduledAppointments} citas programadas y {effectiveAppointments} efectiva. Las etapas y los estados describen los mismos contactos; este corte no permite calcular una tasa de conversión entre ellos.</p>
       <div className="hubspot-insights">
         <div><strong>{number(pending)} en gestión pendiente</strong><span>Marcar de nuevo y seguimiento reúnen {percentage(pending, data.totalContacts)}% del corte. Cada caso necesita próxima acción y fecha.</span></div>
         <div><strong>{number(unhelpful)} no útiles</strong><span>Representan {percentage(unhelpful, data.totalContacts)}%. Conviene revisar el motivo de descarte antes de cambiar la segmentación.</span></div>
         <div><strong>{number(hotLeads)} leads calientes</strong><span>Representan {percentage(hotLeads, data.totalContacts)}% del corte. Conviene priorizar su siguiente contacto y registrar el resultado.</span></div>
       </div>
-      <h4>Recomendaciones para el próximo corte</h4>
+      <h4>Recomendaciones para el siguiente período</h4>
       <ol>
         <li>Priorizar los {hotLeads} leads calientes, confirmar las {scheduledAppointments} citas programadas y registrar el resultado comercial de la cita efectiva.</li>
         <li>Asignar responsable y fecha a los {pending} casos de seguimiento o nueva llamada.</li>

@@ -372,7 +372,8 @@ export function App() {
               <BreakdownVisuals campaigns={overview.campaigns} month={selectedMonth} projectId={projectId} />
 
               <Executive
-                reading={executiveReading(report, selectedMonth, executiveCutoff(overview))}
+                reading={executiveReading(report, selectedMonth, mode === 'october' ? new Date() : executiveCutoff(overview))}
+                final={mode === 'october'}
                 context={view === 'summary' && projectId === 'pekin' ? pekinGoogleSummary(overview) : undefined}
                 source={
                   view === 'summary' && projectId === 'pekin'
@@ -693,13 +694,13 @@ function MetrikuRentalBreakdown({ campaigns }: { campaigns: CampaignMetrics[] })
   </section>;
 }
 
-function Executive({ reading, context, source }: { reading: ReturnType<typeof executiveReading>; context?: string; source: string }) {
+function Executive({ reading, context, source, final = false }: { reading: ReturnType<typeof executiveReading>; context?: string; source: string; final?: boolean }) {
   const { analysis, recommendations } = reading;
   return (
     <section className="executive">
       <div className="executive-icon">✳</div>
       <div>
-        <p className="eyebrow">RESUMEN EJECUTIVO / RENDIMIENTO REAL</p>
+        <p className="eyebrow">{final ? 'RESUMEN EJECUTIVO / CIERRE DE OCTUBRE' : 'RESUMEN EJECUTIVO / RENDIMIENTO REAL'}</p>
         <h3>Análisis</h3>
         <ul>{analysis.map(item => <li key={item}>{item}</li>)}</ul>
         {context && <p>{context}</p>}

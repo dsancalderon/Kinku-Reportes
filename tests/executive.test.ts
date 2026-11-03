@@ -53,3 +53,19 @@ test('sin campañas con datos, el ejecutivo informa la meta pendiente sin atribu
   assert.match(reading.analysis.join(' '), /sin avance medible/);
   assert.doesNotMatch(reading.analysis.join(' '), /cumplimiento/);
 });
+
+test('el cierre de octubre separa resultados con meta de una línea adicional y no habla de ritmo diario', () => {
+  const report: ReportView = {
+    id: 'leads', label: 'Clientes potenciales', unit: 'leads', stats: [], note: '',
+    rows: [
+      { name: 'Arrendatarios', result: 115, target: 80, spend: 798337, budget: 800000, unit: 'leads', costPerResult: 798337 / 115, targetCostPerResult: 10000 },
+      { name: 'Propietarios', result: 221, target: 150, spend: 1499652, budget: 1500000, unit: 'leads', costPerResult: 1499652 / 221, targetCostPerResult: 10000 },
+      { name: 'General', result: 5, target: null, spend: 33107, budget: null, unit: 'leads', costPerResult: 33107 / 5 },
+    ],
+  };
+  const reading = executiveReading(report, '2026-10', new Date('2026-11-03T12:00:00Z'));
+  assert.match(reading.analysis.join(' '), /341 leads/);
+  assert.match(reading.analysis.join(' '), /336 de 230 leads/);
+  assert.match(reading.analysis.join(' '), /General aportó 5 leads/);
+  assert.doesNotMatch(reading.analysis.join(' '), /ritmo|esperado para el corte/);
+});

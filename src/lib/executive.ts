@@ -10,6 +10,7 @@ function costMoney(value: number | null | undefined): string {
 }
 
 export function executiveReading(report: ReportView, month: string, now: Date = new Date()) {
+  if (month === '2026-10' && now >= new Date('2026-11-01T05:00:00Z')) return octoberClosingReading(report);
   const measured = report.rows.filter(row => row.result !== null);
   const targeted = report.rows.filter(row => row.target !== null && row.target > 0 && row.unit === report.unit);
   const total = measured.reduce((sum, row) => sum + (row.result || 0), 0);
@@ -71,5 +72,55 @@ export function executiveReading(report: ReportView, month: string, now: Date = 
   else if (report.unit === 'interacciones') recommendations.push('Revisar la calidad de la interacción por anuncio; interacciones y leads son métricas distintas.');
   else recommendations.push('Revisar frecuencia y distribución del alcance para sostener la exposición sin saturación.');
 
+  return { analysis, recommendations };
+}
+
+function octoberClosingReading(report: ReportView) {
+  const measured = report.rows.filter(row => row.result !== null);
+  const planned = report.rows.filter(row => row.target !== null && row.target > 0 && row.unit === report.unit);
+  const complete = planned.filter(row => row.result !== null);
+  const analysis: string[] = [];
+  const recommendations: string[] = [];
+  if (!measured.length) return {
+    analysis: [`Octubre cerró sin resultados de ${report.label.toLowerCase()} registrados en Meta Ads. Las metas de ${planned.map(row => `${row.name} (${number(row.target)})`).join(' y ')} quedan sin cumplimiento verificable.`],
+    recommendations: ['Verificar si las campañas llegaron a activarse y revisar la extracción antes de atribuirles un resultado de cierre.'],
+  };
+
+  const total = measured.reduce((sum, row) => sum + (row.result || 0), 0);
+  const spend = measured.reduce((sum, row) => sum + (row.spend || 0), 0);
+  analysis.push(`Cierre de octubre: ${number(total)} ${report.unit} con ${money(spend)} COP invertidos.`);
+  if (planned.length && complete.length === planned.length) {
+    const result = complete.reduce((sum, row) => sum + (row.result || 0), 0);
+    const target = complete.reduce((sum, row) => sum + (row.target || 0), 0);
+    analysis.push(`Las líneas con meta cerraron en ${number(result)} de ${number(target)} ${report.unit} (${number(result / target * 100)}% de cumplimiento).`);
+    analysis.push(`Resultado por línea: ${complete.map(row => `${row.name}: ${number(row.result)} de ${number(row.target)} (${number((row.result || 0) / (row.target || 1) * 100)}%)`).join(' · ')}.`);
+    const missed = complete.filter(row => (row.result || 0) < (row.target || 0));
+    if (missed.length) recommendations.push(`Revisar ${missed.map(row => row.name).join(' y ')} antes de fijar el siguiente presupuesto: ${missed.length === 1 ? 'cerró' : 'cerraron'} por debajo de la meta.`);
+    else recommendations.push('Tomar los resultados y costos de las líneas que cumplieron como referencia para planificar el siguiente mes.');
+  } else if (planned.length) {
+    analysis.push(`${complete.length} de ${planned.length} líneas con meta tienen resultados; el cumplimiento conjunto de octubre no es verificable.`);
+    recommendations.push('Confirmar la actividad y extracción de las líneas sin resultados antes de cerrar su evaluación.');
+  } else {
+    analysis.push('Este objetivo no tenía una meta mensual comparable.');
+  }
+
+  const outside = measured.filter(row => row.target === null);
+  if (outside.length) analysis.push(`Fuera de las metas previstas: ${outside.map(row => `${row.name} aportó ${number(row.result)} ${report.unit}`).join(' · ')}; estos resultados no se suman al cumplimiento de las líneas con meta.`);
+  const budgeted = measured.filter(row => row.budget !== null && row.budget > 0 && row.spend !== null);
+  if (budgeted.length) {
+    const budget = budgeted.reduce((sum, row) => sum + (row.budget || 0), 0);
+    const used = budgeted.reduce((sum, row) => sum + (row.spend || 0), 0);
+    analysis.push(`Inversión de las líneas presupuestadas: ${money(used)} de ${money(budget)} COP (${number(used / budget * 100)}%).`);
+  }
+  const withCost = measured.filter(row => row.result !== null && row.result > 0 && row.costPerResult !== null && row.targetCostPerResult != null && row.targetCostPerResult > 0);
+  if (withCost.length) {
+    const unit = report.unit === 'impresiones' ? 'por impresión' : report.unit === 'interacciones' ? 'por interacción' : 'por lead';
+    analysis.push(`Costo ${unit} real / objetivo: ${withCost.map(row => `${row.name} ${costMoney(row.costPerResult)} / ${costMoney(row.targetCostPerResult)}`).join(' · ')}.`);
+    const expensive = withCost.filter(row => (row.costPerResult || 0) > (row.targetCostPerResult || 0));
+    if (expensive.length) recommendations.push(`Revisar creativos y segmentación de ${expensive.map(row => row.name).join(' y ')}: su costo por resultado superó el objetivo de octubre.`);
+  }
+  if (report.unit === 'leads') recommendations.push('Cruzar los leads de Meta con su calidad y avance comercial en HubSpot antes de trasladar estos resultados a nuevas metas.');
+  else if (report.unit === 'interacciones') recommendations.push('Evaluar qué anuncios produjeron interacciones útiles; esta métrica no equivale a leads.');
+  else recommendations.push('Revisar frecuencia y distribución del alcance para planear reconocimiento sin saturación.');
   return { analysis, recommendations };
 }
