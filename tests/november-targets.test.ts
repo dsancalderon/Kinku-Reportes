@@ -8,7 +8,11 @@ test('noviembre conserva las metas por campaña y mide reconocimiento en interac
   assert.ok(novemberTargets.every(target => target.month === '2026-11' && target.channel === 'meta'));
   assert.deepEqual(novemberTargets.filter(target => target.projectId === 'pekin' && target.objective === 'engagement').map(target => target.targetUnit), ['interacciones']);
   assert.deepEqual(novemberTargets.filter(target => target.projectId === 'skala' && target.objective === 'engagement').map(target => target.targetUnit), ['interacciones']);
-  assert.equal(novemberTargets.find(target => target.projectId === 'metriku' && target.lineName === 'INTERACCIÓN')?.targetKpi, 3044);
+  const interaction = novemberTargets.find(target => target.projectId === 'metriku' && target.lineName === 'INTERACCIÓN');
+  assert.ok(interaction);
+  assert.equal(interaction?.targetKpi, 40000);
+  assert.equal(interaction?.originalTargetKpi, 3044);
+  assert.equal(interaction.budgetSpend / interaction.targetCostPerResult, 40000);
   const apartments = novemberTargets.filter(target => target.projectId === 'metriku' && target.lineName.startsWith('ARRENDATARIOS'));
   assert.equal(apartments.length, 2);
   assert.equal(apartments.reduce((sum, target) => sum + target.targetKpi, 0), 16.666666666666668);

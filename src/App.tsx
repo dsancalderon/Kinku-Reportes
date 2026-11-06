@@ -660,7 +660,7 @@ function CampaignTable({ report }: { report: ReportView }) {
                     {row.result != null ? `${number(row.result)} ` : '— '}
                     {row.result != null && <small>{row.unit}</small>}
                   </td>
-                  <td>{row.target != null ? number(row.target) : '—'}{row.originalTargetKpi !== undefined && <small className="target-revision">Revisada · Flow: {number(row.originalTargetKpi)}</small>}</td>
+                  <td>{row.target != null ? number(row.target) : '—'}</td>
                   <td>{money(row.budget)}</td>
                   <td>{money(row.spend)}</td>
                   <td>{money(row.targetCostPerResult)}</td>
