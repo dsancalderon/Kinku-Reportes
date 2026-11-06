@@ -12,6 +12,7 @@ import { getSupabase } from './db/supabase.js';
 import { classifyCampaignLine, getObjectiveForLine } from './integrations/meta.js';
 import { checkGoogleAdsStatus } from './integrations/google.js';
 import { octoberTargets } from '../data/flows/octubre-2026.js';
+import { novemberTargets } from '../data/flows/noviembre-2026.js';
 
 const money = (val: number | null) =>
   val === null || val === undefined || isNaN(val)
@@ -29,8 +30,14 @@ export function resolveCampaignLine(
   targets: MonthlyTarget[],
 ): string {
   if (projectId === 'pekin' && camp.provider !== 'google_ads' && /AWAREN(N)?ES|AWARENESS/i.test(camp.name)
-    && targets.some(target => target.channel === 'meta' && target.objective === 'awareness' && target.lineName === 'RECONOCIMIENTO')) {
+    && targets.some(target => target.channel === 'meta' && target.lineName === 'RECONOCIMIENTO')) {
     return 'RECONOCIMIENTO';
+  }
+  if (projectId === 'metriku' && targets.some(target => target.month === '2026-11')) {
+    if (/ARRENDATARIO.*APTO 601/i.test(camp.name)) return 'ARRENDATARIOS APTO 601';
+    if (/ARRENDATARIO.*APTO 6 MILLONES/i.test(camp.name)) return 'ARRENDATARIOS APTO 6 MILLONES';
+    if (/FINCA.*(BETICA|BÉTICA|VILLAVICENCIO)/i.test(camp.name)) return 'FINCA VILLAVICENCIO';
+    if (/FINCA.*RANCHO GRANDE/i.test(camp.name)) return 'FINCA RANCHO GRANDE';
   }
   const classified = classifyCampaignLine(camp.name, camp.objective || undefined);
   if (classified.startsWith('APARTAESTUDIOS ') && targets.some(target => target.lineName === 'APARTAESTUDIOS')) return 'APARTAESTUDIOS';
@@ -62,9 +69,8 @@ export async function getOverviewData(
 ): Promise<Overview> {
   const baseConnections = getConnections(projectId);
   const supabase = getSupabase();
-  const configuredTargets = selectedMonth === '2026-10'
-    ? octoberTargets.filter(target => target.projectId === projectId)
-    : [];
+  const configuredTargets = (selectedMonth === '2026-10' ? octoberTargets : selectedMonth === '2026-11' ? novemberTargets : [])
+    .filter(target => target.projectId === projectId);
 
   if (!supabase) {
     return {
@@ -201,7 +207,7 @@ export async function getOverviewData(
     // Identificar objetivos presentes en targets (ej: 'leads', 'awareness', 'engagement')
     const uniqueObjectives = Array.from(new Set([
       ...projectTargets.map(t => t.objective),
-      ...Object.entries(lineMetrics).filter(([, item]) => item.hasData).map(([line]) => getObjectiveForLine(line)),
+      ...Object.entries(lineMetrics).filter(([, item]) => item.hasData).map(([line]) => projectTargets.find(target => target.lineName === line)?.objective || getObjectiveForLine(line)),
     ]));
     if (uniqueObjectives.length === 0) {
       if (projectId === 'pekin') uniqueObjectives.push('leads', 'awareness');

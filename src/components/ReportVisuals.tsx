@@ -83,8 +83,8 @@ export function DailyVisual({ report, campaigns }: { report: ReportView; campaig
   </section>;
 }
 
-function breakdownValue(campaign: CampaignMetrics, item: MetaBreakdown) {
-  return campaign.lineName === 'RECONOCIMIENTO' ? item.impressions : campaign.lineName === 'INTERACCIÓN' ? item.engagement : item.leads;
+function breakdownValue(unit: string, item: MetaBreakdown) {
+  return unit === 'impresiones' ? item.impressions : unit === 'interacciones' ? item.engagement : item.leads;
 }
 
 type CreativePreview = { imageUrl: string | null; thumbnailUrl: string | null; previewUrl?: string };
@@ -106,9 +106,9 @@ export function BreakdownVisuals({ campaigns, month, projectId }: { campaigns: C
   }, [campaigns, month, projectId]);
   if (!candidates.length) return null;
   const leadCampaign = candidates.find(campaign => campaign.campaignId === selectedId) || candidates.find(campaign => !['RECONOCIMIENTO', 'INTERACCIÓN'].includes(campaign.lineName || '')) || candidates[0];
-  const unit = leadCampaign.lineName === 'RECONOCIMIENTO' ? 'impresiones' : leadCampaign.lineName === 'INTERACCIÓN' ? 'interacciones' : 'leads';
-  const platforms = (leadCampaign.platformBreakdown || []).map(item => ({ label: item.label, value: breakdownValue(leadCampaign, item) }));
-  const creatives = (leadCampaign.creatives || []).map(item => ({ id: item.id, label: item.label, value: breakdownValue(leadCampaign, item) })).sort((a, b) => b.value - a.value).slice(0, 5);
+  const unit = leadCampaign.lineName === 'RECONOCIMIENTO' ? (month === '2026-11' ? 'interacciones' : 'impresiones') : leadCampaign.lineName === 'INTERACCIÓN' ? 'interacciones' : 'leads';
+  const platforms = (leadCampaign.platformBreakdown || []).map(item => ({ label: item.label, value: breakdownValue(unit, item) }));
+  const creatives = (leadCampaign.creatives || []).map(item => ({ id: item.id, label: item.label, value: breakdownValue(unit, item) })).sort((a, b) => b.value - a.value).slice(0, 5);
   return <section className="viz-section" aria-label="Desgloses gráficos de Meta Ads">
     <div className="dashboard-heading"><div><p className="eyebrow">DESGLOSE / CAMPAÑA</p><h2>Dónde se generan los resultados</h2><p className="subtle viz-campaign-name">{leadCampaign.campaignName} · {unit}</p></div><label className="viz-picker">Campaña<select aria-label="Campaña para los gráficos de desglose" value={leadCampaign.campaignId} onChange={event => setSelectedId(event.target.value)}>{candidates.map(campaign => <option key={campaign.campaignId} value={campaign.campaignId}>{campaign.campaignName}</option>)}</select></label></div>
     <div className="viz-grid">

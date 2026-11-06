@@ -247,7 +247,7 @@ export function App() {
                   : mode === 'historical'
                   ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) con Meta Ads, Google Ads y metas registradas.'
                   : mode === 'october' ? 'Corte mensual consolidado (01 al 31 de octubre de 2026) con métricas de Meta Ads y metas del Flow de octubre.'
-                  : 'Métricas de Meta Ads acumuladas desde el 01 de noviembre hasta el último corte sincronizado. Las metas de noviembre están pendientes de definición.'}
+                  : 'Métricas de Meta Ads acumuladas desde el 01 de noviembre hasta el último corte sincronizado, comparadas con las metas por campaña del Flow de noviembre.'}
               </p>
             </div>
           )}
@@ -381,7 +381,7 @@ export function App() {
                     : mode === 'historical'
                     ? 'Fuente: Meta Ads Graph API + Flow de Metas Septiembre 2026'
                     : mode === 'october' ? 'Fuente: Meta Ads Graph API · Corte mensual del 01 al 31 de octubre · Metas: Flow octubre 2026'
-                    : 'Fuente: Meta Ads Graph API · Acumulado desde el 01 de noviembre hasta el último corte sincronizado · Sin metas de noviembre definidas'
+                    : 'Fuente: Meta Ads Graph API · Acumulado desde el 01 de noviembre hasta el último corte sincronizado · Metas: Flow noviembre 2026'
                 }
               />
 
@@ -679,11 +679,11 @@ function CampaignTable({ report }: { report: ReportView }) {
 }
 
 function MetrikuRentalBreakdown({ campaigns }: { campaigns: CampaignMetrics[] }) {
-  const rentals = campaigns.filter(campaign => campaign.provider === 'meta' && campaign.lineName === 'ARRENDATARIOS');
+  const rentals = campaigns.filter(campaign => campaign.provider === 'meta' && campaign.lineName?.startsWith('ARRENDATARIOS'));
   if (!rentals.length) return null;
   return <section className="panel rental-breakdown" aria-label="Apartamentos en arriendo de Métriku">
     <div className="panel-heading"><h3>Apartamentos en arriendo · detalle por campaña</h3><span className="mini-tag">META ADS</span></div>
-    <p className="subtle">Cada anuncio conserva el nombre registrado en Meta. La meta de 80 leads corresponde al conjunto de Arrendatarios.</p>
+    <p className="subtle">Cada anuncio conserva el nombre registrado en Meta. Las metas de cada mes corresponden a las líneas del Flow, no a cada anuncio.</p>
     {rentals.map(campaign => <div className="rental-campaign" key={campaign.campaignId}>
       <div className="rental-campaign-heading"><strong>{campaign.campaignName}</strong><span>{number(campaign.platformConversions)} leads · {money(campaign.spend)} invertidos</span></div>
       <div className="table-scroll"><table><thead><tr><th>Anuncio / apartamento</th><th>Leads</th><th>Inversión</th><th>Costo por lead</th></tr></thead><tbody>
