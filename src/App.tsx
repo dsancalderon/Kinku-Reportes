@@ -10,7 +10,7 @@ import { HubspotReport } from './components/HubspotReport';
 import { meetsMonthlyPace, monthlyPace } from './lib/pace';
 import { DailyVisual, BreakdownVisuals, GoogleVisuals } from './components/ReportVisuals';
 import { executiveReading } from './lib/executive';
-import { pekinHubspotOctober } from './lib/hubspotSnapshot';
+import { pekinHubspotOctober, pekinHubspotNovember } from './lib/hubspotSnapshot';
 import { AnimatedValue, MotionEnabledContext } from './components/AnimatedValue';
 
 type View = 'summary' | Provider | 'connections';
@@ -44,7 +44,8 @@ export function App() {
 
   const project = projects.find(item => item.id === projectId)!;
   const selectedMonth = mode === 'historical' ? '2026-09' : mode === 'october' ? '2026-10' : '2026-11';
-  const hubspotCutoffDay = Number(pekinHubspotOctober.through.slice(-2));
+  const hubspotSnapshot = selectedMonth === '2026-10' ? pekinHubspotOctober : selectedMonth === '2026-11' ? pekinHubspotNovember : null;
+  const hubspotCutoffDay = Number(hubspotSnapshot?.through.slice(-2) || 0);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -181,7 +182,7 @@ export function App() {
             </select>
             <span>
               America/Bogota ·{' '}
-              {mode === 'historical' ? '01 — 30 SEP, 2026' : mode === 'october' ? '01 — 31 OCT, 2026' : getLivePeriodLabel()}
+              {mode === 'historical' ? '01 — 30 SEP, 2026' : mode === 'october' ? '01 — 31 OCT, 2026' : view === 'hubspot' ? `01 — ${hubspotCutoffDay} NOV, 2026` : getLivePeriodLabel()}
             </span>
             <button type="button" className="motion-toggle" aria-pressed={animationsEnabled} onClick={toggleAnimations}>
               {animationsEnabled ? 'Animaciones activadas' : 'Activar animaciones'}
@@ -235,15 +236,15 @@ export function App() {
             <div className="source-notice">
               <span className="notice-dot" />
               <span>
-                {view === 'hubspot' && mode === 'october'
-                  ? `HUBSPOT · CORTE ${hubspotCutoffDay} OCTUBRE 2026`
+                {view === 'hubspot' && hubspotSnapshot
+                  ? `HUBSPOT · CORTE ${hubspotCutoffDay} ${mode === 'october' ? 'OCTUBRE' : 'NOVIEMBRE'} 2026`
                   : mode === 'historical'
                   ? 'INFORME HISTÓRICO · SEPTIEMBRE 2026'
                   : mode === 'october' ? 'INFORME HISTÓRICO · OCTUBRE 2026' : 'MES EN CURSO · NOVIEMBRE 2026 (AL DÍA)'}
               </span>
               <p>
-                {view === 'hubspot' && mode === 'october'
-                  ? `Datos de contactos compartidos en capturas de HubSpot; corresponden al período del 1 al ${hubspotCutoffDay} de octubre y no se actualizan con la API de Meta.`
+                {view === 'hubspot' && hubspotSnapshot
+                  ? `Datos de contactos compartidos en capturas de HubSpot; corresponden al período del 1 al ${hubspotCutoffDay} de ${mode === 'october' ? 'octubre' : 'noviembre'} y no se actualizan con la API de Meta.`
                   : mode === 'historical'
                   ? 'Corte mensual consolidado (01 al 30 de septiembre de 2026) con Meta Ads, Google Ads y metas registradas.'
                   : mode === 'october' ? 'Corte mensual consolidado (01 al 31 de octubre de 2026) con métricas de Meta Ads y metas del Flow de octubre.'

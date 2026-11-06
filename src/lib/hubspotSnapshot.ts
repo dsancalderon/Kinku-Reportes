@@ -23,3 +23,24 @@ export const pekinHubspotOctober = {
     { label: 'Cita efectiva', count: 1 },
   ],
 } as const;
+
+export const pekinHubspotNovember = {
+  projectId: 'pekin',
+  month: '2026-11',
+  owner: 'Sofía Prias',
+  from: '2026-11-01',
+  through: '2026-11-06',
+  totalContacts: 37,
+  lifecycle: [
+    { label: 'Lead', count: 19, color: '#00656a' },
+    { label: 'Lead calificado por marketing', count: 16, color: '#86c9d4' },
+    { label: 'Lead calificado por ventas', count: 2, color: '#c74192' },
+  ],
+  contactStatus: [
+    { label: 'No útil', count: 15 },
+    { label: 'Marcar de nuevo', count: 13 },
+    { label: 'Seguimiento', count: 4 },
+    { label: 'Cita Programada', count: 3 },
+    { label: 'Lead Caliente', count: 2 },
+  ],
+} as const;
